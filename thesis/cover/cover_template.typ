@@ -3,8 +3,8 @@
 #let cover(
   title: "",
   author: "",
-  graduation-year: 2024,
-  graduation-month: "November",
+  graduation-year: 2026,
+  graduation-month: "June",
   supervisor1: "",
   supervisor2: "",
   coreader   : "",

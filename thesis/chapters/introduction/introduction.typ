@@ -1,8 +1,6 @@
-#import "../template.typ": *
+#import "../../template.typ": *
 
 = Introduction <chap:intro>
-
-Later in @chap:methodology 
 
 This is a complete template for the MSc Geomatics thesis. 
 It contains all the parts that are required and is structured in such a way that most/all supervisors expect.
@@ -34,7 +32,7 @@ For a figure, you can also just use @fig:cat, but I guess you can qualify it wit
 @fig:sometriangles is a simple figure in PNG format, notice the use of `placement: auto` to put the figure at the best place possible (top or bottom, Typst decides for you).
 
 #figure(
-  image("../figs/sometriangles.png", width:50%),
+  image("../../figs/sometriangles.png", width:50%),
   placement: auto, //-- otherwise figures gets placed where it's called
   caption: flex-caption( [1 nice figure.], [Two nice figure.]),
 ) <fig:sometriangles>
@@ -45,15 +43,15 @@ As shown in @fig:cat, it is possible to have two figures (or more) side by side.
 You can also refer to a _subfigure_: see @fig:cat:b.
 #subpar-grid(
   figure(
-    image("../figs/tricat.pdf", page: 1),
+    image("../../figs/tricat.pdf", page: 1),
     caption: [],
   ), <fig:cat:a>,
   figure(
-    image("../figs/tricat.pdf", page: 2), 
+    image("../../figs/tricat.pdf", page: 2), 
     caption: [],
   ), <fig:cat:b>,
   figure(
-    image("../figs/tricat.pdf", page: 3), 
+    image("../../figs/tricat.pdf", page: 3), 
     caption: [],
   ), <fig:cat:c>,
   columns: (1fr, 1fr, 1fr),
@@ -142,7 +140,7 @@ An example of a simple table is in @tab:example1.
 
 ❤️ You can even read directly from a CSV file this way:
 
-#let data = csv("../data/smth.csv")
+#let data = csv("../../data/smth.csv")
 #table(
   columns: 3,
   ..data.flatten(),
@@ -154,7 +152,7 @@ The best way is to use #link("http://matplotlib.org")[matplotlib], or its more b
 With these, you can use Python to generate nice plots, such as that in @fig:myplot.
 
 #figure(
-  image("../plots/myplot.svg", width:70%),
+  image("../../plots/myplot.svg", width:70%),
   placement: auto, 
   caption: [A super plot.],
 ) <fig:myplot>

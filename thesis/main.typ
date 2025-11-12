@@ -86,7 +86,7 @@
 #counter(page).update(1)
 #set heading(numbering: "1.")
 
-#include "chapters/introduction.typ"
+#include "chapters/introduction/introduction.typ"
 #include "chapters/relatedwork/relatedwork.typ"
 #include "chapters/methodology/methodology.typ"
 
@@ -104,4 +104,4 @@
 #include "appendices/someumldia.typ"
 
 //-- references
-#bibliography("/refs.bib", style: "apa")
+#bibliography("refs.bib", style: "apa")
