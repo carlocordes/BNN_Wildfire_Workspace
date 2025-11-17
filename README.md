@@ -1,9 +1,9 @@
-# BNN Wildfire Workspace
+## BNN Wildfire Workspace
 A hybrid notebook codespace environment designed to co-host a number of functionalities for a Geomatics MSc. thesis:
 
  * Note-taking in markdown: `/notes`
  * Code & experiments
- * Documentation and Reporting
+ * Documentation and Reporting: `/thesis'
 
  The official typst template in `/thesis` was adapted from a template: https://github.com/tudelft3d/msc_geomatics_thesis_typst.git
 
