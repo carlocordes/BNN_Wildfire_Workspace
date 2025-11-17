@@ -4,3 +4,6 @@
     - HTML style paper
 
 * General about transformers
+
+
+* [Book on NN and DL by Mickael Nielsen](http://neuralnetworksanddeeplearning.com)

@@ -1,2 +1,0 @@
-- Accounts for inherent noise in the observations used to train a model
-- Produced as a by-product of a [[Bayesian Neural Network]]

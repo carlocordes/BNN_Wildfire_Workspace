@@ -1,10 +1,13 @@
 
 Full Title: <br>
 First Author: <br>
-Resource:
 
 ---
 
-Short Summary: <br>
+### Short Summary
 
-Notes: <br>
+---
+### Notes
+
+---
+### Take-aways
