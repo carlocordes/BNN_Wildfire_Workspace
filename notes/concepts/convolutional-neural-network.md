@@ -22,3 +22,5 @@ The three main layers used in convNet are:
     - Pooling layer outputs a 3D volume, the classification head requires a 1D array, which is achieved by [[flattening]]
     - This layer converts the extracted features into final classification scores
 
+Cons:
+- Inefficient for modeling global dependencies e.g. relationships between features that are far apart.

@@ -4,7 +4,7 @@ A type of [[Machine Learning]] model.
 
 Comprises input layer, hidden layers and output layer.
 
-The [[cost-function]], characterizes how well the network performs. This function is then iteratively minimize through a process called [[gradient-descent]].
+The [[cost-function]], characterises how well the network performs. This function is then iteratively minimise through a process called [[gradient-descent]].
 
 The [[learning-rate]] is a parameter that dictates the gravity of changes that are made to the network parameters after every iteration.
 
