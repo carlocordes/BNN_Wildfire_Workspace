@@ -6,4 +6,5 @@
 
 - [ ] General research about transformers
 - [ ] [Book on NN and DL by Mickael Nielsen](http://neuralnetworksanddeeplearning.com)
+
 - [ ] Attention is all you need

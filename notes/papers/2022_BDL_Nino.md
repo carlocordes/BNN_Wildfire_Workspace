@@ -7,7 +7,7 @@ First Author: Xihaier Luo
 ### Short Summary
 An application of a network interfered with [[bayesian-statistics]] is made to predict the variations in sea surface temperatures. 800 years of partially simulated climate data is used to predict outputs at varying [[lead-time]]. 
 
-A comparison is made between traditional [[deep-learning]](BDL), [[convLSTM]] and the bayesian variant. Results show the BDL architecture producing more accurate crisp results. 
+A comparison is made between traditional [[deep-learning]](BDL), [[convLSTM]] and the bayesian variant. Results show the BDL architecture producing more accurate, crisp results. 
 
 Finally, an evaluation is made to what extent the [[uncertainty]] of the output is valuable to describing the [[prediction-error]] of predictions in the future.
 
