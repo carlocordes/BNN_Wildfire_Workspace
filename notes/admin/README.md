@@ -24,6 +24,9 @@ To what extent can (Bayesian) spatio-temporal transformers be used to predict se
 **Pipeline**: <br>
 
 ```mermaid
+---
+title: Network Architecture
+---
 flowchart LR
     subgraph Data
         Input[("Input Tensor
@@ -36,24 +39,37 @@ flowchart LR
         Input --> Dynamic
     end
 
-    subgraph Encoder
-        ste(Spatio-temporal Embedding)
-        pe(Positional Embedding)
+    subgraph Embedding
+        Patch("$$E_{patch} = Flatten(Patch)  W + b$$")
+                Dynamic & Static --> Patch
 
-        Static --> ste
-        Dynamic --> pe
+        subgraph Spatiotemporal Embedding
+            STE("$$E_{patch} + E_{spatial} + E_{temporal}$$")
+        end
 
-        mhe1(Multi-Head Self-Attention)
-        addnorm1(Add & Norm)
-        NLP1(Multi-Layer-Perceptron)
+        subgraph Spatial Embedding
+            SE("$$E_{patch} + E_{spatial}$$")
+        end
 
-        pe --> mhe1
-        mhe1 --> addnorm1
-        addnorm1 --> NLP1
-        pe --> addnorm1
+        Patch --> STE
+        Patch --> SE
+    end 
 
+    subgraph Encoding
+        subgraph Shallow Individual Spatial Self-Attention
+            MHE1(Multi-Head Self-Attention)
+            MLP1(Multi-Layer-Perceptron)
+            ADDNORM1@{ shape: dbl-circ, label: "Add &
+                                         Norm" }
+            SE -- N x B x --> MHE1 --> ADDNORM1 --> MLP1 --> MHE1
+        end
 
+        subgraph Shallow Individual Spatiotemporal Self-Attention
+            MHE2(Multi-Head Self-Attention)
+            MLP2(Multi-Layer-Perceptron)
+            ADDNORM2@{ shape: dbl-circ, label: "Add &
+                                         Norm" }
+            STE -- N x B x --> MHE2 --> ADDNORM2 --> MLP2 --> MHE2
+        end
     end
-
-    
-````
+```
