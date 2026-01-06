@@ -14,19 +14,16 @@ To what extent can (Bayesian) spatio-temporal transformers be used to predict se
 
 ### Data
 
-| Name | Description |Temporal Res. | Temporal Extent |Spatial Res. | d-type | Delivery Method |
-| --- | --- | --- | --- | --- | --- | --- |
-| MODIS | | | | | |
-| FIRMS | | | | | |
-| NVDI | | | | | |
-| DTM | | | | | |
+| Name | Description |Temporal Res. | Temporal Extent |Spatial Res. | Spatial Extent | d-type | Delivery Method |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| [NASA FIRMS MODIS](https://firms.modaps.eosdis.nasa.gov/country/)| Active fire / hotspot information available as Points(lon, lat, t), brightness, confidence  | continuous | 2001 - 2024| 1000m | worldwide | csv | Download |
+| NVDI | | | | | | |
+| DTM | | | | | | |
+| | | | | | | |
 
-**Pipeline**: <br>
+### Network Architecture
 
-```mermaid
----
-title: Network Architecture
----
+```mermaid 
 flowchart LR
     subgraph Data
         Input[("Input Tensor
@@ -71,5 +68,6 @@ flowchart LR
                                          Norm" }
             STE -- N x B x --> MHE2 --> ADDNORM2 --> MLP2 --> MHE2
         end
+        %% Further network
     end
 ```
