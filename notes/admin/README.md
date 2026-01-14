@@ -71,46 +71,46 @@ flowchart TD
 
     end
 
-        subgraph Iterative Fusion
-            subgraph Cross-Attention
-            MHE3(Cross-Attention)
-            MLP3(Multi-Layer-Perceptron)
-            ADDNORM3@{ shape: dbl-circ, label: "Add &
-                                         Norm" }
-            
-            end
-
-            Static1(Static Embedding)
-            MLP2 --> MHE3
-            MHE3--> ADDNORM3 --> Static1 --> MLP3 --> MHE3
-            MLP1 --> Static1
+    subgraph Iterative Fusion
+        subgraph Cross-Attention
+        MHE3(Cross-Attention)
+        MLP3(Multi-Layer-Perceptron)
+        ADDNORM3@{ shape: dbl-circ, label: "Add &
+                                        Norm" }
+        
         end
 
-        subgraph Joint-Deep-Self-Attention
-            MHE4(Multi-Head Self-Attention)
-            MLP4(Multi-Layer-Perceptron)
-            ADDNORM4@{ shape: dbl-circ, label: "Add &
-                                         Norm" }
-            MLP3 -- N x B x--> MHE4
-            MHE4 --> ADDNORM4 --> MLP4 --> MHE4
-        end
+        Static1(Static Embedding)
+        MLP2 --> MHE3
+        MHE3--> ADDNORM3 --> Static1 --> MLP3 --> MHE3
+        MLP1 --> Static1
+    end
 
-        subgraph Convolution / Upsampling
-            ST1(Stage 1
-                D'' x n'' x n'')
-            ST2(Stage 2
-                D' x n' x n')
-            ST3(Stage 3
-                1 x n x n)
-            MLP4 --> ST1
-            ST1 --> ST2 --> ST3
-        end
+    subgraph Joint-Deep-Self-Attention
+        MHE4(Multi-Head Self-Attention)
+        MLP4(Multi-Layer-Perceptron)
+        ADDNORM4@{ shape: dbl-circ, label: "Add &
+                                        Norm" }
+        MLP3 -- N x B x--> MHE4
+        MHE4 --> ADDNORM4 --> MLP4 --> MHE4
+    end
 
-        subgraph Prediction Head
-            Output(Probabalistic Output Layer
-                    0-1)
+    subgraph Convolution / Upsampling
+        ST1(Stage 1
+            D'' x n'' x n'')
+        ST2(Stage 2
+            D' x n' x n')
+        ST3(Stage 3
+            1 x n x n)
+        MLP4 --> ST1
+        ST1 --> ST2 --> ST3
+    end
 
-            ST3 --> Output
-        end
-    
+    subgraph Prediction Head
+        Output(Probabalistic Output Layer
+                0-1)
+
+        ST3 --> Output
+    end
+
 ```
