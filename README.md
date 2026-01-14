@@ -1,4 +1,4 @@
-## BNN Wildfire Workspace
+## Transformer Wildfire Workspace
 A hybrid notebook codespace environment designed to co-host a number of functionalities for a Geomatics MSc. thesis:
 
  * Note-taking in markdown: `/notes`
@@ -10,3 +10,4 @@ A hybrid notebook codespace environment designed to co-host a number of function
 Best used in VS-Code with the additions of these extensions:
 * `Foam`: Rendering, wiki-linking and graph-view of markdown files
 * `Tinymist`: Implementation of typst functionality
+* `Mermaid`: Rendering of js-based architecture diagrams
