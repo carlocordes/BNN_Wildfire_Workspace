@@ -18,3 +18,6 @@
 
 - [ ] [From Convolution to Attention: Transformer-Based Modeling for Multi-Day Wildfire Spread Forecasting](https://ieeexplore.ieee.org/stamp/stamp.jsp?arnumber=11072678)
     - In depth about positional and temporal encoding
+
+- [ ] [The Bayesian Transformer](https://www.research-collection.ethz.ch/server/api/core/bitstreams/78589e06-71ce-4f6a-9fae-3c9e5b99184a/content)
+    - MSc. Thesis about transformers and bayesian variants, topical introduction useful + Sources
