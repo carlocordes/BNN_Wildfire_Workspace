@@ -1,7 +1,11 @@
 .obsidian
 .DS_Store
 /notes/meetings/*
-/deliverables
+
+/deliverables/*
+!/deliverables/*/
+/deliverables/*/*
+#!/deliverables/*/*.pdf
 
 /thesis/*.pdf
 thesis/.DS_Store
