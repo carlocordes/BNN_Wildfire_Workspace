@@ -1,7 +1,8 @@
 #Internal
-from time import time
+from ViT import STViT
 
 #External
+from time import time
 import torch
 import torch.nn as nn
 
@@ -9,12 +10,12 @@ EMBED_DIM = 32
 
 batch_size = 1
 num_modules = 2
-height = 4
-width = 4
+height = 128
+width = 128
 
 print(f'Processing {2} input modules at dimensions {height}x{width} ')
 
-patch_size = 2 # Rectangular, number of pixels
+patch_size = 8 # Rectangular, number of pixels
 
 
 num_patches_per_image = int((height / patch_size) * (width / patch_size))
