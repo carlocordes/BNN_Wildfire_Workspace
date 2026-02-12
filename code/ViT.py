@@ -112,7 +112,7 @@ class STViT(nn.Module):
 
         x = x.view(self.batch_size,
                    self.img_height // self.patch_size, self.img_width // self.patch_size,
-                   self.embedding_dim).permute(0, 3, 1, 2)
+                   self.embedding_dim).permute(0, 3, 1, 2).contiguous()
 
         # Decode
         x = self.decoder(x).squeeze(1)

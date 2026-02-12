@@ -1,17 +1,29 @@
+# Internal
+from ViT import STViT
+
 #Internal
 import torch
-from ViT import STViT
+import torch.nn as nn
+
+
+def train(data, model, loss_fn, optimizer):
+    # TODO: Wrap into train function
+    pass
+
 
 if __name__ == '__main__':
 
 
     # Toy parameters
     EMBED_DIM = 32
-    batch_size = 1
+    batch_size = 2
     num_modules = 2
-    height = 128
-    width = 128
-    patch_size = 8 # Rectangular, number of pixels
+    height = 16
+    width = 16
+    patch_size = 4 # Rectangular, number of pixels
+
+    device = torch.accelerator.current_accelerator().type if torch.accelerator.is_available() else "cpu"
+    print(f"Using {device} device as compute")
 
     # Define Model
     model = STViT(batch_size = batch_size,
@@ -19,19 +31,30 @@ if __name__ == '__main__':
                   img_height = height,
                   img_width = width,
                   patch_size = patch_size,
-                  embedding_dim = EMBED_DIM)#.to(device)
-
-    #print(model)
-
-    # Some toy data
-    input_data = torch.randn(batch_size, num_modules, height, width)
-    target = torch.ones(batch_size, 1, height, width)
-
-    #Feedforward
-    device = torch.accelerator.current_accelerator().type if torch.accelerator.is_available() else "cpu"
-    print(f"Using {device} device")
-    model(input_data).to(device)
+                  embedding_dim = EMBED_DIM).to(device)
 
     # Model params
     #for name, param in model.named_parameters():
     #    print(name, param.shape)
+
+    # Loss and Optimizer
+    loss_fn = nn.CrossEntropyLoss()
+    optimizer = torch.optim.SGD(model.parameters(), lr = 1e-2)
+
+    ## Train workflow
+
+    # Create random tensor pair
+    input_data = torch.randn(batch_size, num_modules, height, width, device = device)
+    target = torch.rand(batch_size, height, width, device = device)
+
+    # Predict
+    pred = model(input_data)
+
+
+    # Compute Loss
+    loss = loss_fn(pred, target)
+
+    # Backpropagate (opt. with optimizer)
+    loss.backward()
+    optimizer.step()
+    optimizer.zero_grad()
