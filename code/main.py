@@ -16,11 +16,11 @@ if __name__ == '__main__':
 
     # Toy parameters
     EMBED_DIM = 32
-    batch_size = 2
+    batch_size = 1
     num_modules = 2
-    height = 16
-    width = 16
-    patch_size = 4 # Rectangular, number of pixels
+    height = 256
+    width = 256
+    patch_size = 16 # Rectangular, number of pixels
 
     device = torch.accelerator.current_accelerator().type if torch.accelerator.is_available() else "cpu"
     print(f"Using {device} device as compute")
@@ -49,7 +49,6 @@ if __name__ == '__main__':
 
     # Predict
     pred = model(input_data)
-
 
     # Compute Loss
     loss = loss_fn(pred, target)

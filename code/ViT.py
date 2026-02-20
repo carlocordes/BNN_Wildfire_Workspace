@@ -5,8 +5,8 @@ class STViT(nn.Module):
     """
     Spatio-temporal Vision Transformer
         Args:
-        batch_size:
-        num_modules:
+        batch_size: Number of like-sized samples to be passed through at one forward feed
+        num_modules: 
         patch_size:
         embedding_dim : 
     """
