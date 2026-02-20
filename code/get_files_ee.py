@@ -6,31 +6,21 @@ import pandas as pd
 
 # ----------- CONFIG ----------- #
 PROJECT_ID = 'transformerwildfire'
-
 #ee.Authenticate()
 ee.Initialize(project=PROJECT_ID)
-
-latmin, longmin = 36.812, -9.490
-#latmin, longmin = 40.8653,-8.5692
-latmax, longmax = 42.2724, -6.0234
-
-
-
-# ------- GOLDEN GRID ---------- #
-TARGET_CRS = 'EPSG:3763' # ETRS89 Portugal TM06
-TARGET_SCALE = 1000
-target_proj = ee.Projection(TARGET_CRS).atScale(TARGET_SCALE)
 # ------------------------------ #
 
 
 class GoldenGrid():
+    """
+    Defines project-unified grid via CRS, scale (m) and area of interest
+    """
     def __init__(self, crs, scale, bbox : list[float]):
         self.crs = crs
         self.scale = scale
         self.aoi = ee.Geometry.Rectangle(bbox)
 
         self.target_proj = ee.Projection(crs).atScale(scale)
-
 
 
 def get_one_lst_image(date, golden_grid : GoldenGrid):
@@ -49,7 +39,7 @@ def get_one_lst_image(date, golden_grid : GoldenGrid):
         image.select("LST_Day_1km")
         .multiply(0.02)
         .subtract(273.15)
-        .reproject(crs=portugal_grid.target_proj)
+        .reproject(crs=golden_grid.target_proj)
     )
 
     # Build output path
@@ -122,10 +112,15 @@ def get_dtm(dtm_dir : Path, golden_grid : GoldenGrid) -> None:
         file_per_band=False
     )
 
+
 if __name__ == '__main__':
-    portugal_grid = GoldenGrid(crs = 'EPSG:3763',
+
+    latmin, longmin = 36.812, -9.490
+    latmax, longmax = 42.2724, -6.0234
+
+    portugal_ggrid = GoldenGrid(crs = 'EPSG:3763',
                                scale = 1000,
                                bbox = [longmin, latmin, longmax, latmax])
 
-    #download_yearly_lst(2024)
-    get_dtm(Path('data', 'raw', 'dtm'), portugal_grid)
+    download_yearly_lst(2024, portugal_ggrid)
+    #get_dtm(Path('data', 'raw', 'dtm'), portugal_ggrid)
