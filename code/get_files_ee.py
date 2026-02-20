@@ -14,7 +14,7 @@ latmin, longmin = 36.812, -9.490
 #latmin, longmin = 40.8653,-8.5692
 latmax, longmax = 42.2724, -6.0234
 
-aoi = ee.Geometry.Rectangle([longmin, latmin, longmax, latmax])
+
 
 # ------- GOLDEN GRID ---------- #
 TARGET_CRS = 'EPSG:3763' # ETRS89 Portugal TM06
@@ -23,10 +23,20 @@ target_proj = ee.Projection(TARGET_CRS).atScale(TARGET_SCALE)
 # ------------------------------ #
 
 
-def get_one_lst_image(date):
+class GoldenGrid():
+    def __init__(self, crs, scale, bbox : list[float]):
+        self.crs = crs
+        self.scale = scale
+        self.aoi = ee.Geometry.Rectangle(bbox)
+
+        self.target_proj = ee.Projection(crs).atScale(scale)
+
+
+
+def get_one_lst_image(date, golden_grid : GoldenGrid):
     collection = (
         ee.ImageCollection("MODIS/061/MOD11A2")
-        .filterBounds(aoi)
+        .filterBounds(golden_grid.aoi)
         .filterDate(date, ee.Date(date).advance(8, 'day'))
     )
 
@@ -39,7 +49,7 @@ def get_one_lst_image(date):
         image.select("LST_Day_1km")
         .multiply(0.02)
         .subtract(273.15)
-        .reproject(crs=target_proj)
+        .reproject(crs=portugal_grid.target_proj)
     )
 
     # Build output path
@@ -51,15 +61,15 @@ def get_one_lst_image(date):
     geemap.ee_export_image(
         lst,
         filename=str(output_path),
-        scale=TARGET_SCALE,
-        region=aoi,
-        crs=TARGET_CRS,
+        scale=golden_grid.scale,
+        region=golden_grid.aoi,
+        crs=golden_grid.crs,
         file_per_band=False,
     )
     
     return None
 
-def download_yearly_lst(year):
+def download_yearly_lst(year, golden_grid : GoldenGrid):
     print(f"--- Starting downloads for the year {year} ---")
     
     dates = pd.date_range(start=f'{year}-01-01', end=f'{year}-12-31', freq='8D')
@@ -68,7 +78,7 @@ def download_yearly_lst(year):
     for date in date_strings:
         print(f"\nProcessing date: {date}")
         try:
-            get_one_lst_image(date)
+            get_one_lst_image(date, golden_grid=golden_grid)
             time.sleep(1) 
             
         except ValueError as e:
@@ -78,7 +88,7 @@ def download_yearly_lst(year):
             
     print(f"\n--- Finished downloading data for {year} ---")
 
-def get_dtm(dtm_dir : Path) -> None:
+def get_dtm(dtm_dir : Path, golden_grid : GoldenGrid) -> None:
     """
     dtm = (
         ee.ImageCollection("CGIAR/SRTM90_V4")
@@ -95,7 +105,7 @@ def get_dtm(dtm_dir : Path) -> None:
             reducer=ee.Reducer.mean(),
             maxPixels=2048
         )
-        .reproject(crs=target_proj)
+        .reproject(crs=golden_grid.target_proj)
     )
 
     dtm_dir.mkdir(parents=True, exist_ok=True) # Assert that directory exists
@@ -106,12 +116,16 @@ def get_dtm(dtm_dir : Path) -> None:
     geemap.ee_export_image(
         dtm_aligned,
         filename=output_path,
-        scale=TARGET_SCALE,
-        region=aoi,
-        crs=TARGET_CRS,
+        scale=golden_grid.scale,
+        region=golden_grid.aoi,
+        crs=golden_grid.crs,
         file_per_band=False
     )
 
 if __name__ == '__main__':
-    download_yearly_lst(2024)
-    #get_dtm(Path('data', 'raw', 'dtm'))
+    portugal_grid = GoldenGrid(crs = 'EPSG:3763',
+                               scale = 1000,
+                               bbox = [longmin, latmin, longmax, latmax])
+
+    #download_yearly_lst(2024)
+    get_dtm(Path('data', 'raw', 'dtm'), portugal_grid)
