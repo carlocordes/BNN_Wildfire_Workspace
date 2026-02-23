@@ -1,7 +1,7 @@
 import ee
 import geemap
 from pathlib import Path
-import time  # <-- FIXED: changed from 'from time import time'
+import time
 import pandas as pd
 
 # ----------- CONFIG ----------- #
@@ -78,15 +78,8 @@ def download_yearly_lst(year, golden_grid : GoldenGrid):
             
     print(f"\n--- Finished downloading data for {year} ---")
 
-def get_dtm(dtm_dir : Path, golden_grid : GoldenGrid) -> None:
-    """
-    dtm = (
-        ee.ImageCollection("CGIAR/SRTM90_V4")
-        .select('DEM')
-        .mosaic()
-        .setDefaultProjection(crs='EPSG:4326', scale=30.0)
-    )
-    """
+def get_one_dtm_image(dtm_dir : Path, golden_grid : GoldenGrid) -> None:
+
     dtm = ee.Image("CGIAR/SRTM90_V4").select('elevation')
 
     dtm_aligned = (
@@ -122,5 +115,9 @@ if __name__ == '__main__':
                                scale = 1000,
                                bbox = [longmin, latmin, longmax, latmax])
 
-    download_yearly_lst(2024, portugal_ggrid)
-    #get_dtm(Path('data', 'raw', 'dtm'), portugal_ggrid)
+
+
+
+
+    #download_yearly_lst(2024, portugal_ggrid)
+    #get_one_dtm_image(Path('data', 'raw', 'dtm'), portugal_ggrid)
