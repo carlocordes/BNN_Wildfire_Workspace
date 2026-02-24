@@ -1,9 +1,14 @@
 # Internal
 from ViT import STViT
+from create_dataset import create_pytorch_dataset
 
-#Internal
+#External
+from pathlib import Path
+
 import torch
 import torch.nn as nn
+import torch.optim as optim
+from torch.utils.data import DataLoader
 
 
 def train(data, model, loss_fn, optimizer):
@@ -13,13 +18,21 @@ def train(data, model, loss_fn, optimizer):
 
 if __name__ == '__main__':
 
+    # Set up data
+    paths_modis = Path('data', 'processed', 'LST_MODIS_8day')
+    paths_dtm = Path('data', 'processed', 'slope', 'dtm_aligned.tif')
+    paths_target = Path('data', 'processed', 'burn')
+
+    # Dataset
+    dataset = create_pytorch_dataset(paths_modis, paths_dtm, paths_target)
+    batch_size = 4
+    train_loader = DataLoader(dataset, batch_size=batch_size, shuffle=True) # Package as data loader and shuffle
+
+
 
     # Toy parameters
     EMBED_DIM = 32
-    batch_size = 1
     num_modules = 2
-    height = 609
-    width = 311
     patch_size = 16 # Rectangular, number of pixels
 
     device = torch.accelerator.current_accelerator().type if torch.accelerator.is_available() else "cpu"
@@ -30,30 +43,38 @@ if __name__ == '__main__':
                   patch_size = patch_size,
                   embedding_dim = EMBED_DIM).to(device)
 
-    # Model params
-    #for name, param in model.named_parameters():
-    #    print(name, param.shape)
-    """
-    # Loss and Optimizer
-    loss_fn = nn.CrossEntropyLoss()
-    optimizer = torch.optim.SGD(model.parameters(), lr = 1e-2)
-    """
-    ## Train workflow
 
-    # Create random tensor pair
-    input_data = torch.randn(batch_size, num_modules, height, width, device = device)
-    target = torch.rand(batch_size, height, width, device = device)
+    # Loss function
+    loss_fn = nn.MSELoss()
 
-    print(input_data.shape)
-   
-    # Predict
-    pred = model(input_data)
-    """
-    # Compute Loss
-    loss = loss_fn(pred, target)
+    # Optimizer
+    optimizer = optim.Adam(model.parameters(), lr = 1e-4)
 
-    # Backpropagate (opt. with optimizer)
-    loss.backward()
-    optimizer.step()
-    optimizer.zero_grad()
-    """
+    epochs = 20
+
+    model.train() # Set training mode
+
+
+    for epoch in range(epochs):
+        epoch_loss = 0.0
+        
+        for batch_idx, (inputs, targets) in enumerate(train_loader):
+            # Move data to GPU
+            inputs = inputs.to(device)
+            targets = targets.to(device) # Shape: (B, 1, H, W)
+
+            # 1. Forward pass
+            # Note: targets is (B, 1, H, W), model output is (B, H, W)
+            # We squeeze targets to (B, H, W) to match model output
+            preds = model(inputs)
+            loss = loss_fn(preds, targets.squeeze(1))
+
+            # 2. Backward pass
+            optimizer.zero_grad() # Clear previous gradients
+            loss.backward()       # Compute gradients
+            optimizer.step()      # Update weights
+
+            epoch_loss += loss.item()
+
+        avg_loss = epoch_loss / len(train_loader)
+        print(f"Epoch [{epoch+1}/{epochs}] - Loss: {avg_loss:.6f}")

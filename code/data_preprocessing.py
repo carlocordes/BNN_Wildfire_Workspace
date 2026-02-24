@@ -159,7 +159,6 @@ def grid_target_map(path_to_csv : Path,
                          out_path  = out_path,
                          golden_grid = golden_grid)
 
-
 def rasterize_points(points: gpd.GeoDataFrame,
                      date_str: str,
                      out_path: Path,
