@@ -56,9 +56,9 @@ def get_one_lst_image(date, golden_grid : GoldenGrid):
     )
 
     # Build output path
-    output_path = Path('data', 'raw', 'LST_MODIS_8day') / f'lst_{date}.tif'
+    output_path = Path('data', 'processed', 'LST_MODIS_8day') / f'lst_{date}.tif'
     
-    # <-- FIXED: Ensure the local folder exists before saving
+    # Ensure the local folder exists before saving
     output_path.parent.mkdir(parents=True, exist_ok=True) 
 
     geemap.ee_export_image(
@@ -234,12 +234,11 @@ portugal_ggrid = GoldenGrid(crs = 'EPSG:3763',
                             bbox = [longmin, latmin, longmax, latmax])
 
 if __name__ == '__main__':
-
+    """
     grid_target_map(path_to_csv = Path('data', 'raw', 'burn'),
                     out_path = Path('data', 'processed', 'burn'),
                     golden_grid = portugal_ggrid,
                     day_interval = 8)
-
-
+    """
+    get_one_dtm_image(Path('data', 'slope'), portugal_ggrid)
     #download_yearly_lst(2024, portugal_ggrid)
-    #get_one_dtm_image(Path('data', 'raw', 'dtm'), portugal_ggrid)
