@@ -8,6 +8,7 @@ import ee
 import geemap
 from pathlib import Path
 import time
+import datetime
 import pandas as pd
 import geopandas as gpd
 import glob
@@ -15,6 +16,7 @@ from shapely.geometry import box
 import rasterio
 from rasterio.features import rasterize
 from rasterio.transform import from_origin
+import duckdb
 
 # ----------- CONFIG ----------- #
 PROJECT_ID = 'transformerwildfire'
@@ -118,30 +120,66 @@ def get_one_dtm_image(dtm_dir : Path, golden_grid : GoldenGrid) -> None:
         file_per_band=False
     )
 
-def grid_target_map(path_to_csv : Path,
-                    out_path : Path,
-                    golden_grid : GoldenGrid,
-                    day_interval : str
-                    ) -> None:
+def ingest_burn_records(path_to_csv : Path,
+                        out_path : Path,
+                        golden_grid : GoldenGrid,
+                        day_interval : str
+                        ) -> None:
+    # DB config
+    db_name = 'burn_points.db'
+    table_name = 'burn_points'
+    con = duckdb.connect(path_to_csv / db_name)
+    con.execute("INSTALL spatial;" \
+                "LOAD spatial;")
+    con.execute(f"DROP TABLE IF EXISTS {table_name}")
+    first = True
 
-    load_path = glob.glob(str(path_to_csv) + '/*.csv')[0]
+    # csv file schema
+    paths = glob.glob(str(path_to_csv) + '/*.csv')
 
-    # Load and disregard
-    points = gpd.read_file(load_path).drop(columns = ["brightness", "scan", "track", "acq_time","satellite",
-                                                  "instrument", "version", "frp", "daynight", "type"])
-    
-    # Some data wrangling
-    points["acq_date"] = pd.to_datetime(points["acq_date"])
 
-    points["month"] = points["acq_date"].dt.month
-    points["day_of_year"] = points["acq_date"].dt.dayofyear
+    for load_path in paths:
 
-    points = gpd.GeoDataFrame(
-        points,
-        geometry=gpd.points_from_xy(points.longitude, points.latitude),
-        crs="EPSG:4326",
-    ).drop(columns = ["longitude", "latitude"])
+        # Load and disregard
+        points = gpd.read_file(load_path).\
+            drop(columns = ["brightness", "scan", "track", "acq_time","satellite",
+                            "instrument", "version", "frp", "daynight", "type"])
+        
+        # Some data wrangling
+        points["acq_date"] = pd.to_datetime(points["acq_date"])
+        points["year"] = points["acq_date"].dt.year
+        points["month"] = points["acq_date"].dt.month
+        points["day_of_year"] = points["acq_date"].dt.dayofyear
+        points["geometry"] = gpd.points_from_xy(points['longitude'], points['latitude'])
+        points = points.drop(columns = ['latitude', 'longitude'])
+        points = gpd.GeoDataFrame(
+            points,
+            crs="EPSG:4326",
+        )
+        points = points.set_geometry('geometry').to_wkb() # Write to wkb for spatial extension usability
 
+
+        # Write to db
+        view_name = 'gdf_view'
+        con.register(view_name, points)
+        rel = con.from_df(points)
+
+        if first:
+            # Create Mode
+            con.execute(f"DROP TABLE IF EXISTS {table_name}")
+            rel.create(table_name)
+            first = False
+        else:
+            # Append mode
+            rel.insert_into(table_name)
+        
+    count = con.execute(f"""
+            SELECT COUNT(*) FROM {table_name}
+            """).fetchall()
+    print(f'Wrote {count[0][0]} to {table_name}')
+
+def grid_target_map():
+    """
     # Produce tifs at day interval
     dates = pd.date_range(start=f'2024-01-01', end=f'2024-12-31', freq=f'{day_interval}D') # TODO: either add to goldengrid or as function variable, dont hardcode
 
@@ -158,6 +196,8 @@ def grid_target_map(path_to_csv : Path,
                          date_str = date_str,
                          out_path  = out_path,
                          golden_grid = golden_grid)
+        
+        """
 
 def rasterize_points(points: gpd.GeoDataFrame,
                      date_str: str,
@@ -233,11 +273,11 @@ portugal_ggrid = GoldenGrid(crs = 'EPSG:3763',
                             bbox = [longmin, latmin, longmax, latmax])
 
 if __name__ == '__main__':
-    """
-    grid_target_map(path_to_csv = Path('data', 'raw', 'burn'),
+
+    ingest_burn_records(path_to_csv = Path('data', 'raw', 'burn'),
                     out_path = Path('data', 'processed', 'burn'),
                     golden_grid = portugal_ggrid,
                     day_interval = 8)
-    """
-    get_one_dtm_image(Path('data', 'slope'), portugal_ggrid)
+
+    #get_one_dtm_image(Path('data', 'slope'), portugal_ggrid)
     #download_yearly_lst(2024, portugal_ggrid)
