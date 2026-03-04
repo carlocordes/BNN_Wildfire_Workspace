@@ -11,6 +11,9 @@ import torch.optim as optim
 from torch.utils.data import DataLoader
 
 
+def weighted_BCE(preds, targets, pos_weight):
+    pass
+
 def train(data, model, loss_fn, optimizer):
     # TODO: Wrap into train function
     pass
@@ -46,6 +49,8 @@ if __name__ == '__main__':
 
     # Loss function
     loss_fn = nn.MSELoss()
+
+    # TODO: Define Binary Cross Entropy Loss function (custom)
 
     # Optimizer
     optimizer = optim.Adam(model.parameters(), lr = 1e-4)
