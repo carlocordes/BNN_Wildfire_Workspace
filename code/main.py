@@ -1,6 +1,6 @@
 # Internal
-from ViT import STViT
-from create_dataset import create_pytorch_dataset
+from src.models.vit.vit import STViT
+from src.dataset_builder import create_pytorch_dataset
 
 #External
 from pathlib import Path
