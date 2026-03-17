@@ -339,5 +339,5 @@ if __name__ == '__main__':
                     out_path = Path('data', 'processed', 'burn'),
                     golden_grid = portugal_ggrid)
 
-    #get_one_dtm_image(Path('data', 'slope'), portugal_ggrid)
-    #download_yearly_lst(2024, portugal_ggrid)
+    get_one_dtm_image(Path('data', 'slope'), portugal_ggrid)
+    download_yearly_lst(2024, portugal_ggrid)
