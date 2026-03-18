@@ -5,7 +5,9 @@ from src.data.download.lst_modis import download_yearly_lst
 from src.data.download.burn_targets import ingest_burn_records
 
 # External
+import sys
 from pathlib import Path
+sys.path.append(str(Path(__file__).resolve().parents[1] / "src"))
 
 def main():
     # Define local golden grid
@@ -31,7 +33,7 @@ def main():
     #download_yearly_lst(2022, portugal_ggrid)
 
     # DTM
-    get_one_dtm_image(Path('data', 'raw' ' dtm'), portugal_ggrid)
+    get_one_dtm_image(Path('data', 'raw', 'dtm'), portugal_ggrid)
 
     # Targets
     ingest_burn_records(Path('data', 'raw', 'burn'))
