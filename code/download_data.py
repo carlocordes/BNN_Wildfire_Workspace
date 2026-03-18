@@ -27,16 +27,16 @@ def main():
     )
 
     # MODIS LST
-    #download_yearly_lst(2025, portugal_ggrid)
+    download_yearly_lst(Path('data', 'raw', 'LST_MODIS_8day'), portugal_ggrid)
     #download_yearly_lst(2024, portugal_ggrid)
     #download_yearly_lst(2023, portugal_ggrid)    
     #download_yearly_lst(2022, portugal_ggrid)
 
     # DTM
-    get_one_dtm_image(Path('data', 'raw', 'dtm'), portugal_ggrid)
+    #get_one_dtm_image(Path('data', 'raw', 'dtm'), portugal_ggrid)
 
     # Targets
-    ingest_burn_records(Path('data', 'raw', 'burn'))
+    #ingest_burn_records(Path('data', 'raw', 'burn'))
 
 
 
