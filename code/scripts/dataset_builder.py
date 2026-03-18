@@ -71,19 +71,10 @@ def create_pytorch_dataset(paths_a: Path,
 
 if __name__ == '__main__':
 
-    paths_modis = Path('data', 'processed', 'LST_MODIS_8day')
-    paths_dtm = Path('data', 'processed', 'slope', 'dtm_aligned.tif')
+    paths_modis = Path('data', 'raw', 'LST_MODIS_8day')
+    paths_dtm = Path('data', 'raw', 'dtm', 'dtm_aligned.tif')
     paths_target = Path('data', 'processed', 'burn')
 
     dataset = create_pytorch_dataset(paths_a=paths_modis,
                                      paths_b=paths_dtm,
                                      paths_t = paths_target)
-    
-    if __name__ == '__main__':
-        # Set up data
-        paths_modis = Path('data', 'processed', 'LST_MODIS_8day')
-        paths_dtm = Path('data', 'processed', 'slope', 'dtm_aligned.tif')
-        paths_target = Path('data', 'processed', 'burn')
-
-        # Dataset
-        dataset = create_pytorch_dataset(paths_modis, paths_dtm, paths_target)

@@ -47,9 +47,8 @@ def get_one_lst_image(date, out_dir : Path, golden_grid : GoldenGrid):
     return None
 
 def download_yearly_lst(out_dir : Path, golden_grid : GoldenGrid):
-    #print(f"--- Starting downloads for the year {year} ---")
-    
-    dates = golden_grid.dates #pd.date_range(start=f'{year}-01-01', end=f'{year}-12-31', freq='8D')
+  
+    dates = golden_grid.dates
     date_strings = dates.strftime('%Y-%m-%d').tolist()
 
     for date in date_strings:
@@ -65,8 +64,8 @@ def download_yearly_lst(out_dir : Path, golden_grid : GoldenGrid):
             print(f"Skipped {date}: {e}")
         except Exception as e:
             print(f"An error occurred for {date}: {e}")
-            
-    #print(f"\n--- Finished downloading data for {year} ---")
+     
 
 if __name__ == '__main__':
-        download_yearly_lst(2024, portugal_ggrid)
+        #download_yearly_lst(2024, portugal_ggrid)
+        pass

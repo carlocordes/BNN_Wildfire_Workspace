@@ -1,3 +1,19 @@
+# Internal
+from src.core.goldengrid import GoldenGrid
+
+# External
+import math
+import numpy as np
+from pathlib import Path
+import duckdb
+import pandas as pd
+import geopandas as gpd
+from shapely import from_wkb, box
+
+import rasterio
+from rasterio.features import rasterize
+from rasterio.transform import from_origin
+
 
 def grid_target_map(path_to_db : Path,
                     out_path : Path,
@@ -125,6 +141,6 @@ if __name__ == '__main__':
 
     #ingest_burn_records(path_to_csv = Path('data', 'raw', 'burn'))
 
-    grid_target_map(path_to_db = db_path,
+    grid_target_map(path_to_db = Path('data', 'raw', 'burn', 'burn_points.db'),
                     out_path = Path('data', 'processed', 'burn'),
                     golden_grid = portugal_ggrid)

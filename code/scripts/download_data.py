@@ -14,8 +14,8 @@ def main():
     latmin, longmin = 36.812, -9.490
     latmax, longmax = 42.2724, -6.0234
 
-    start_date = '2024-01-01'
-    end_date = '2024-12-31'
+    start_date = '2025-01-01'
+    end_date = '2025-12-31'
 
     portugal_ggrid = GoldenGrid(
         crs = 'EPSG:3763',
@@ -28,15 +28,12 @@ def main():
 
     # MODIS LST
     download_yearly_lst(Path('data', 'raw', 'LST_MODIS_8day'), portugal_ggrid)
-    #download_yearly_lst(2024, portugal_ggrid)
-    #download_yearly_lst(2023, portugal_ggrid)    
-    #download_yearly_lst(2022, portugal_ggrid)
 
     # DTM
-    #get_one_dtm_image(Path('data', 'raw', 'dtm'), portugal_ggrid)
+    get_one_dtm_image(Path('data', 'raw', 'dtm'), portugal_ggrid)
 
     # Targets
-    #ingest_burn_records(Path('data', 'raw', 'burn'))
+    ingest_burn_records(Path('data', 'raw', 'burn'))
 
 
 
