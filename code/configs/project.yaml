@@ -1,0 +1,22 @@
+data:
+  spatial_extent:
+    long_min: -9.4900
+    long_max: -6.0234
+    lat_min: 36.812
+    lat_max: 42.2724
+  crs: "EPSG:3763"
+  scale: 1000 # meters
+
+  temporal_extent:
+    start_date: "2025-01-01"
+    end_date: "2025-12-31"
+    day_interval: 1
+
+model: 
+  embedding_dim: 256
+  patch_size: 16 # Pixels
+
+training:
+  learning_rate: 0.0001
+  num_epochs: 20
+  loss_function : "weighted_bce" # "mse"

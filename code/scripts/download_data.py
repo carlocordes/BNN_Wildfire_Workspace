@@ -3,11 +3,10 @@ from src.core.goldengrid import GoldenGrid
 from src.data.download.dtm import get_one_dtm_image
 from src.data.download.lst_modis import download_yearly_lst
 from src.data.download.burn_targets import ingest_burn_records
+from src.data.download.era5_wind import download_era5_wind_image
 
 # External
-import sys
-from pathlib import Path
-sys.path.append(str(Path(__file__).resolve().parents[1] / "src"))
+import ee
 
 def main():
     # Define local golden grid
@@ -27,15 +26,13 @@ def main():
     )
 
     # MODIS LST
-    download_yearly_lst(Path('data', 'raw', 'LST_MODIS_8day'), portugal_ggrid)
+    #download_yearly_lst(Path('data', 'raw', 'LST_MODIS_8day'), portugal_ggrid)
 
     # DTM
-    get_one_dtm_image(Path('data', 'raw', 'dtm'), portugal_ggrid)
+    # get_one_dtm_image(Path('data', 'raw', 'dtm'), portugal_ggrid)
 
     # Targets
-    ingest_burn_records(Path('data', 'raw', 'burn'))
-
-
+    # ingest_burn_records(Path('data', 'raw', 'burn'))
 
 if __name__ == '__main__':
     main()

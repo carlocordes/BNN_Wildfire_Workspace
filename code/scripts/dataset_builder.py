@@ -15,29 +15,31 @@ def create_pytorch_dataset(paths_a: Path,
     # Files at a (Input 1)
     files_a = glob.glob(str(paths_a) + '/*.tif')
     files_a.sort()
-    
+
     # Files at t (Target)
     files_c = glob.glob(str(paths_t) + '/*.tif')
     files_c.sort()
 
     print(f'Creating dataset from {len(files_a)} file pairs')
 
+
     all_inputs = []
     all_targets = []
 
+    # # Read static DTM first (once)
+    path_b = glob.glob(str(paths_b) + '/*.tif')[0]
+    with rasterio.open(path_b) as src:
+        img_b = torch.from_numpy(src.read(1)).float()
+
+
     # Iterate through the triplets
     for a_path, c_path in zip(files_a, files_c):
-        # 1. Read Image A (Dynamic Input)
+        # Read Image A (Dynamic Input)
         with rasterio.open(a_path) as src:
             # .read(1) gets the first band; result is a numpy array
             img_a = torch.from_numpy(src.read(1)).float()
 
-        # 2. Read Image B (Static Input)
-        # Assuming paths_b is a single Path object to one static .tif file
-        with rasterio.open(paths_b) as src:
-            img_b = torch.from_numpy(src.read(1)).float()
-
-        # 3. Read Image C (Target)
+        # Read Image C (Target)
         with rasterio.open(c_path) as src:
             img_t = torch.from_numpy(src.read(1)).float()
 
@@ -72,7 +74,7 @@ def create_pytorch_dataset(paths_a: Path,
 if __name__ == '__main__':
 
     paths_modis = Path('data', 'raw', 'LST_MODIS_8day')
-    paths_dtm = Path('data', 'raw', 'dtm', 'dtm_aligned.tif')
+    paths_dtm = Path('data', 'processed', 'slope')
     paths_target = Path('data', 'processed', 'burn')
 
     dataset = create_pytorch_dataset(paths_a=paths_modis,

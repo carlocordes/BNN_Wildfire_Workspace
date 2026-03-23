@@ -31,18 +31,4 @@ class GoldenGrid():
         
 
 if __name__ == '__main__':
-    # Define local golden grid
-    latmin, longmin = 36.812, -9.490
-    latmax, longmax = 42.2724, -6.0234
-
-    start_date = '2024-01-01'
-    end_date = '2024-12-31'
-
-    portugal_ggrid = GoldenGrid(
-        crs = 'EPSG:3763',
-        scale = 1000,
-        bbox = [longmin, latmin, longmax, latmax],
-        start_date = start_date,
-        end_date = end_date,
-        day_interval = 7
-    )
+    pass

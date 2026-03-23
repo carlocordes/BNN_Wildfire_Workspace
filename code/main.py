@@ -1,6 +1,6 @@
 # Internal
 from src.models.vit.vit import STViT
-from src.data.dataset_builder import create_pytorch_dataset
+from scripts.dataset_builder import create_pytorch_dataset
 
 #External
 from pathlib import Path
@@ -22,8 +22,8 @@ def train(data, model, loss_fn, optimizer):
 if __name__ == '__main__':
 
     # Set up data
-    paths_modis = Path('data', 'processed', 'LST_MODIS_8day')
-    paths_dtm = Path('data', 'processed', 'slope', 'dtm_aligned.tif')
+    paths_modis = Path('data', 'raw', 'LST_MODIS_8day')
+    paths_dtm = Path('data', 'processed', 'slope', 'dtm.tif')
     paths_target = Path('data', 'processed', 'burn')
 
     # Dataset
