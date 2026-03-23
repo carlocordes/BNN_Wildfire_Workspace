@@ -1,9 +1,11 @@
 # Internal
+from scripts.download_data import DataDownloader
 from src.models.vit.vit import STViT
 from scripts.dataset_builder import create_pytorch_dataset
 
 #External
 from pathlib import Path
+from omegaconf import OmegaConf
 
 import torch
 import torch.nn as nn
@@ -11,19 +13,16 @@ import torch.optim as optim
 from torch.utils.data import DataLoader
 
 
-def weighted_BCE(preds, targets, pos_weight):
-    pass
-
-def train(data, model, loss_fn, optimizer):
-    # TODO: Wrap into train function
-    pass
-
 
 if __name__ == '__main__':
 
+
+    dd = DataDownloader(Path('configs', 'project.yaml'))
+    dd.download()
+
     # Set up data
     paths_modis = Path('data', 'raw', 'LST_MODIS_8day')
-    paths_dtm = Path('data', 'processed', 'slope', 'dtm.tif')
+    paths_dtm = Path('data', 'processed', 'slope')
     paths_target = Path('data', 'processed', 'burn')
 
     # Dataset
