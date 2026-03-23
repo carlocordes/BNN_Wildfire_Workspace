@@ -8,6 +8,7 @@ from src.data.download.era5_wind import download_era5_wind_image
 # External
 from pathlib import Path
 from omegaconf import OmegaConf
+import argparse
 import ee
 
 
@@ -54,5 +55,18 @@ class DataDownloader():
 
         print('Completed Download')
 
-if __name__ == '__main__':
-    pass
+
+def main(config_path: Path):
+    downloader = DataDownloader(config_path)
+    downloader.download()
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Run full pipeline using a YAML config")
+    parser.add_argument(
+        "--config",
+        type=Path,
+        required=True,
+        help="Path to the YAML configuration file"
+    )
+    args = parser.parse_args()
+    main(args.config)

@@ -16,8 +16,9 @@ from torch.utils.data import DataLoader
 
 if __name__ == '__main__':
 
+    config_path = Path('configs', 'project.yaml')
 
-    dd = DataDownloader(Path('configs', 'project.yaml'))
+    dd = DataDownloader(config_path)
     dd.download()
 
     # Set up data
