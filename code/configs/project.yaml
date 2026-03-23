@@ -13,6 +13,7 @@ data:
     day_interval: 1
 
 model: 
+  num_modules: 2
   embedding_dim: 256
   patch_size: 16 # Pixels
 
@@ -20,7 +21,14 @@ training:
   learning_rate: 0.0001
   num_epochs: 20
   loss_function : "weighted_bce" # "mse"
+  batch_size: 4
 
 data_paths:
   raw:
+    MODIS: 'data/raw/LST_MODIS_8day'
+    DTM: 'data/processed/slope'
+    target: 'data/processed/burn'
   processed:
+
+data_sets:
+  path: "data/datasets"

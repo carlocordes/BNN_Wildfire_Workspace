@@ -1,4 +1,7 @@
 data/*
+
+te.py
+
 __pycache__/*
 */__pycache__/*
 */*/__pycache__/*
