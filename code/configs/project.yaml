@@ -1,9 +1,9 @@
 data:
   spatial_extent:
-    long_min: -9.4900
-    long_max: -6.0234
-    lat_min: 36.812
-    lat_max: 42.2724
+    longmin: -9.4900
+    longmax: -6.0234
+    latmin: 36.812
+    latmax: 42.2724
   crs: "EPSG:3763"
   scale: 1000 # meters
 
@@ -13,6 +13,7 @@ data:
     day_interval: 1
 
 model: 
+  num_modules: 2
   embedding_dim: 256
   patch_size: 16 # Pixels
 
@@ -20,3 +21,14 @@ training:
   learning_rate: 0.0001
   num_epochs: 20
   loss_function : "weighted_bce" # "mse"
+  batch_size: 4
+
+data_paths:
+  raw:
+    MODIS: 'data/raw/LST_MODIS_8day'
+    DTM: 'data/processed/slope'
+    target: 'data/processed/burn'
+  processed:
+
+data_sets:
+  path: "data/datasets"

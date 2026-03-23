@@ -12,6 +12,7 @@ dependencies = [
     "geopandas>=1.1.2",
     "matplotlib>=3.10.8",
     "numpy>=2.4.2",
+    "omegaconf>=2.3.0",
     "rasterio>=1.5.0",
     "torch==2.9.1",
     "torchvision==0.24.1",
