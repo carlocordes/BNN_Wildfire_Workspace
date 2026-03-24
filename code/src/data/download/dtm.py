@@ -50,4 +50,4 @@ if __name__ == '__main__':
         day_interval = 7
     )
 
-    get_one_dtm_image(Path('data', 'slope'), portugal_ggrid)
+    get_one_dtm_image(Path('data', 'processed', 'slope'), portugal_ggrid)
