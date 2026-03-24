@@ -1,4 +1,6 @@
 # Internal
+from src.core import load_config
+
 from src.core.goldengrid import GoldenGrid
 from src.data.download.dtm import get_one_dtm_image
 from src.data.download.lst_modis import download_yearly_lst
@@ -48,7 +50,7 @@ class DataDownloader():
         #download_yearly_lst(Path('data', 'raw', 'LST_MODIS_8day'), portugal_ggrid)
 
         # DTM
-        # get_one_dtm_image(Path('data', 'raw', 'dtm'), portugal_ggrid)
+        get_one_dtm_image(Path('data', 'raw', 'dtm'), portugal_ggrid)
 
         # Targets
         # ingest_burn_records(Path('data', 'raw', 'burn'))

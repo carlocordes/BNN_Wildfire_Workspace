@@ -1,4 +1,5 @@
 # Internal
+from src.core.utils import load_config
 from src.models.vit.vit import STViT
 
 #External
@@ -9,18 +10,7 @@ from omegaconf import OmegaConf
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.utils.data import DataLoader, TensorDataset
-
-
-# Config handling
-def load_config(config_path: Path):
-    cfg = OmegaConf.load(config_path)
-
-    return {
-        "data": cfg["data_sets"],
-        "model": cfg["model"],
-        "training": cfg["training"]
-    }
+from torch.utils.data import DataLoader
 
 
 # Dataset
