@@ -17,8 +17,8 @@ class Dataset_Builder():
     def save(self, dataset_name : str):
         # Read out config
         cfg = OmegaConf.load(self.config_path)
-        cfg_data = cfg['data_paths']['raw']
-        paths_a = cfg_data['MODIS']
+        cfg_data = cfg['data_paths']['processed']
+        paths_a = cfg_data['LST']
         paths_b = cfg_data['DTM']
         paths_t = cfg_data['target']
 

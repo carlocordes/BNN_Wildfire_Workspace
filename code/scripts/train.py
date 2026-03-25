@@ -14,11 +14,12 @@ from torch.utils.data import DataLoader
 
 
 # Dataset
-def build_dataloader(cfg_data, cfg_training, dataset_name):
-    dataset_path = Path(cfg_data["path"]) / f"{dataset_name}.pt"
+def build_dataloader(cfg_dataset, cfg_training, dataset_name):
+    dataset_path = Path(cfg_dataset["path"]) / f"{dataset_name}.pt"
 
     dataset = torch.load(dataset_path, weights_only=False)
 
+    print(f"Loaded dataset from: {dataset_path} | Samples: {len(dataset)}")
     return DataLoader(
         dataset,
         batch_size=cfg_training["batch_size"],
@@ -37,8 +38,7 @@ def build_model(cfg_model, device):
 
 
 # Training
-def train(model, dataloader, cfg_training, device):
-    loss_fn = nn.MSELoss()
+def train(model, loss_fn, dataloader, cfg_training, device):
     optimizer = optim.Adam(model.parameters(), lr=cfg_training["learning_rate"])
 
     model.train()
@@ -74,6 +74,7 @@ def main(config_path: Path, dataset_name: str):
     cfg_data = cfg["data"]
     cfg_model = cfg["model"]
     cfg_training = cfg["training"]
+    cfg_data_sets = cfg["data_sets"]
 
     # ---- Device ----
     device = (
@@ -84,11 +85,12 @@ def main(config_path: Path, dataset_name: str):
     print(f"Using {device} device")
 
     # ---- Build components ----
-    dataloader = build_dataloader(cfg_data, cfg_training, dataset_name)
+    dataloader = build_dataloader(cfg_data_sets, cfg_training, dataset_name)
     model = build_model(cfg_model, device)
+    loss_fn = nn.BCEWithLogitsLoss(weight = torch.Tensor([cfg_training["pos_weight"]])).to(device)
 
     # ---- Train ----
-    train(model, dataloader, cfg_training, device)
+    train(model, loss_fn, dataloader, cfg_training, device)
 
 
 

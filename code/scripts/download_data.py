@@ -51,11 +51,11 @@ class DataDownloader():
 
         # MODIS LST
         cfg_modis_path = Path(cfg_data_paths['processed']['LST'])
-        #download_yearly_lst(cfg_modis_path, portugal_ggrid)
+        download_yearly_lst(cfg_modis_path, portugal_ggrid)
 
         # DTM
         cfg_dtm_path = Path(cfg_data_paths["processed"]['DTM'])
-        #get_one_dtm_image(cfg_dtm_path, portugal_ggrid)
+        get_one_dtm_image(cfg_dtm_path, portugal_ggrid)
 
         # Targets
         cfg_burn_config = cfg_data_paths['raw']['target']
