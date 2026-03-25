@@ -67,3 +67,6 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
     main(args.config)
+
+    # Example usage from /code:
+    # uv run -m scripts.process_data --config configs/project.yaml
