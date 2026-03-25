@@ -24,14 +24,18 @@ def get_one_dtm_image(dtm_dir : Path, golden_grid : GoldenGrid) -> None:
     output_path = str(dtm_dir / 'dtm_aligned.tif')
     print(f"Exporting aligned DTM to {output_path}")
 
-    geemap.ee_export_image(
-        dtm_aligned,
-        filename=output_path,
-        scale=golden_grid.scale,
+    task = ee.batch.Export.image.toDrive(
+        image=dtm_aligned,
+        description='dtm_aligned',
+        folder='earthengine',
+        fileNamePrefix='dtm_aligned',
         region=golden_grid.aoi,
+        scale=golden_grid.scale,
         crs=golden_grid.crs,
-        file_per_band=False
+        maxPixels=1e13
     )
+
+    task.start()
 
 if __name__ == '__main__':
     # Define local golden grid
