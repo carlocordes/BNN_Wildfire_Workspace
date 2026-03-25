@@ -2,7 +2,7 @@
 
 ## 1. Docker
 * Change to directory `code/`
-* Run `docker build wildfire-model .`
+* Run `docker build -t wildfire-model .`
 * Configure configs in `configs/project.yaml`
 * Runs scripts in `scripts/`
 

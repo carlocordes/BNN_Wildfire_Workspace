@@ -8,9 +8,9 @@ data:
   scale: 1000 # meters
 
   temporal_extent:
-    start_date: "2025-01-01"
-    end_date: "2025-12-31"
-    day_interval: 1
+    start_date: "2024-01-01"
+    end_date: "2024-12-31"
+    day_interval: 8
 
 model: 
   num_modules: 2
@@ -25,10 +25,14 @@ training:
 
 data_paths:
   raw:
-    MODIS: 'data/raw/LST_MODIS_8day'
-    DTM: 'data/processed/slope'
-    target: 'data/processed/burn'
+    target:
+      csv: 'data/raw/burn'
+      db_name: 'burn_points.db'
+      table_name: 'burn_points'
   processed:
+    LST: 'data/processed/LST'
+    DTM: 'data/processed/elevation'
+    target: 'data/processed/burn'
 
 data_sets:
   path: "data/datasets"

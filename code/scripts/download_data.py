@@ -24,18 +24,17 @@ class DataDownloader():
     def download(self):
         print('Fetching configs')
 
-        cfg = OmegaConf.load(self.config_path)
-
-        cfg_data = cfg['data']
-        cfg_spatial_extent = cfg['data']['spatial_extent']
-        temporal_extent = cfg['data']['temporal_extent']
-
+        cfg = load_config(self.config_path)
 
         # Define local golden grid
+        cfg_spatial_extent = cfg['data']['spatial_extent']
         latmin, longmin = cfg_spatial_extent['latmin'], cfg_spatial_extent['longmin']
-        latmax, longmax = cfg_spatial_extent['latmax'], cfg_spatial_extent['latmax']
+        latmax, longmax = cfg_spatial_extent['latmax'], cfg_spatial_extent['longmax']
 
-        
+
+        # Define golden grid from config specs
+        temporal_extent = cfg['data']['temporal_extent']
+        cfg_data = cfg['data']
 
         portugal_ggrid = GoldenGrid(
             crs = cfg_data['crs'],
@@ -46,14 +45,21 @@ class DataDownloader():
             day_interval = temporal_extent['day_interval']
         )
 
+
+        # Perform downloads to paths
+        cfg_data_paths = cfg['data_paths']
+
         # MODIS LST
-        #download_yearly_lst(Path('data', 'raw', 'LST_MODIS_8day'), portugal_ggrid)
+        cfg_modis_path = Path(cfg_data_paths['processed']['LST'])
+        #download_yearly_lst(cfg_modis_path, portugal_ggrid)
 
         # DTM
-        get_one_dtm_image(Path('data', 'raw', 'dtm'), portugal_ggrid)
+        cfg_dtm_path = Path(cfg_data_paths["processed"]['DTM'])
+        #get_one_dtm_image(cfg_dtm_path, portugal_ggrid)
 
         # Targets
-        # ingest_burn_records(Path('data', 'raw', 'burn'))
+        cfg_burn_config = cfg_data_paths['raw']['target']
+        ingest_burn_records(cfg_burn_config)
 
         print('Completed Download')
 

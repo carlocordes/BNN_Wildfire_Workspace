@@ -2,6 +2,7 @@
 from src.core.goldengrid import GoldenGrid
 
 # External
+import requests 
 import ee
 import geemap
 from pathlib import Path
@@ -19,23 +20,18 @@ def get_one_dtm_image(dtm_dir : Path, golden_grid : GoldenGrid) -> None:
         .reproject(crs=golden_grid.target_proj)
     )
 
-    dtm_dir.mkdir(parents=True, exist_ok=True) # Assert that directory exists
+    dtm_dir.mkdir(parents=True, exist_ok=True)
+    output_path = dtm_dir / 'dtm.tif'
 
-    output_path = str(dtm_dir / 'dtm_aligned.tif')
-    print(f"Exporting aligned DTM to {output_path}")
-
-    task = ee.batch.Export.image.toDrive(
-        image=dtm_aligned,
-        description='dtm_aligned',
-        folder='earthengine',
-        fileNamePrefix='dtm_aligned',
-        region=golden_grid.aoi,
+    print(f"Downloading DTM to {output_path}")
+    
+    geemap.ee_export_image(
+        dtm_aligned,
+        filename=output_path,
         scale=golden_grid.scale,
-        crs=golden_grid.crs,
-        maxPixels=1e13
+        region=golden_grid.aoi,
+        file_per_band=False
     )
-
-    task.start()
 
 if __name__ == '__main__':
     # Define local golden grid
@@ -51,7 +47,7 @@ if __name__ == '__main__':
         bbox = [longmin, latmin, longmax, latmax],
         start_date = start_date,
         end_date = end_date,
-        day_interval = 7
+        day_interval = 8
     )
 
     get_one_dtm_image(Path('data', 'processed', 'slope'), portugal_ggrid)

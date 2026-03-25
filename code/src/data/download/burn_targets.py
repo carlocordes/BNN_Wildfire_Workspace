@@ -7,9 +7,12 @@ import pandas as pd
 import geopandas as gpd
 import duckdb
 
-def ingest_burn_records(path_to_csv : Path) -> None:
-    table_name = 'burn_points'
-    db_name = 'burn_points.db'
+def ingest_burn_records(burn_config) -> None:
+    table_name = burn_config['table_name']
+    db_name = burn_config['db_name']
+    path_to_csv = Path(burn_config['csv'])
+
+
     # DB config
     con = duckdb.connect(path_to_csv / db_name)
     con.execute("INSTALL spatial;"

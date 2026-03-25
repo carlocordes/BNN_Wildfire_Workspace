@@ -7,7 +7,9 @@ def load_config(config_path: Path):
     cfg = OmegaConf.load(config_path)
 
     return {
-        "data": cfg["data_sets"],
+        "data": cfg["data"],
         "model": cfg["model"],
-        "training": cfg["training"]
+        "training": cfg["training"],
+        "data_paths" : cfg["data_paths"],
+        "data_sets" : cfg["data_sets"],
     }
