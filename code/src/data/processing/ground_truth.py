@@ -20,8 +20,6 @@ def grid_target_map(path_to_db : Path,
                     golden_grid : GoldenGrid
                     ) -> None:
     table_name = 'burn_points'
-    # Produce tifs at day interval
-    #dates = pd.date_range(start=f'2024-01-01', end=f'2024-12-31', freq=f'{day_interval}D') # TODO: either add to goldengrid or as function variable, dont hardcode
 
     con = duckdb.connect(path_to_db)
     con.execute("""
