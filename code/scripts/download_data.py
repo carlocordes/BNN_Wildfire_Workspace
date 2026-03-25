@@ -1,5 +1,5 @@
 # Internal
-from src.core import load_config
+from src.core.utils import load_config
 
 from src.core.goldengrid import GoldenGrid
 from src.data.download.dtm import get_one_dtm_image

@@ -1,4 +1,5 @@
-FROM pytorch/pytorch:2.2.0-cuda12.1-cudnn8-runtime
+# This image contains PyTorch 2.1+, CUDA 12.2, and Python 3.11 # TODO: UNTESTED
+FROM nvcr.io/nvidia/pytorch:23.10-py3
 
 WORKDIR /workspace
 
