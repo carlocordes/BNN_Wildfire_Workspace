@@ -1,4 +1,5 @@
 # Internal
+from src.core.systempaths import DATASETS, MODELS
 
 # External
 import glob
@@ -76,8 +77,7 @@ class Dataset_Builder():
         input_bytes = out_tensor.tensors[0].element_size() * out_tensor.tensors[0].nelement()
         print(f"Total RAM used by inputs: {input_bytes / 1e9:.2f} GB")
 
-        out_path = Path(cfg['data_sets']['path'])
-        torch.save(out_tensor, f = out_path / (dataset_name + '.pt'))
+        torch.save(out_tensor, f = DATASETS / (dataset_name + '.pt'))
 
 def main(config_path : Path, dataset_name : str):
     dataset = Dataset_Builder(config_path)
@@ -101,4 +101,5 @@ if __name__ == '__main__':
     args = parser.parse_args()
     main(args.config, args.datasetname)
 
-    # Example usage from /code : uv run -m scripts.dataset_builder --config configs/project.yaml --datasetname test
+    # Example usage from /code :
+    # uv run -m scripts.dataset_builder --config configs/project.yaml --datasetname test

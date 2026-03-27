@@ -1,4 +1,5 @@
 # Internal
+from src.core.systempaths import DATASETS, MODELS
 from src.core.utils import load_config
 from src.models.vit.vit import STViT
 
@@ -15,7 +16,7 @@ from torch.utils.data import DataLoader
 
 # Dataset
 def build_dataloader(cfg_dataset, cfg_training, dataset_name):
-    dataset_path = Path(cfg_dataset["path"]) / f"{dataset_name}.pt"
+    dataset_path = DATASETS / f"{dataset_name}.pt"
 
     dataset = torch.load(dataset_path, weights_only=False)
 
@@ -92,6 +93,10 @@ def main(config_path: Path, dataset_name: str):
     # ---- Train ----
     train(model, loss_fn, dataloader, cfg_training, device)
 
+    # ---- Save model ----
+    model_dir = MODELS / (dataset_name + "_model.pt")
+    print(f'Storing model as {model_dir}')
+    torch.save(model.state_dict(), f = model_dir)
 
 
 if __name__ == '__main__':
@@ -101,3 +106,6 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
     main(args.config, args.datasetname)
+
+    # Example usage from /code:
+    # uv run -m scripts.train --config configs/project.yaml --datasetname test
