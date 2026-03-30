@@ -14,6 +14,9 @@ class STViT(nn.Module):
     """
     def __init__(self,
                  num_modules : int,
+                 num_static_channels : int,
+                 num_dynamic_channels : int,
+                 num_timestamps_per_sample : int,
                  patch_size : int,
                  embedding_dim: int,
         ):
@@ -24,10 +27,40 @@ class STViT(nn.Module):
         self.num_modules = num_modules
         self.patch_size = patch_size
         self.embedding_dim = embedding_dim
+
+        self.num_static_channels= num_static_channels
+        self.num_dynamic_channels = num_dynamic_channels
+
+        self.num_timestamps_per_sample = num_timestamps_per_sample
         
-        # Network Classes
-        self.patch_embedding = nn.Conv2d(1, embedding_dim, kernel_size=patch_size, stride=patch_size)
-        
+        # Static embeds
+        self.static_embeds = nn.ModuleList([
+            nn.Conv2d(in_channels = 1,
+                      out_channels = embedding_dim,
+                      kernel_size = patch_size,
+                      stride = patch_size)
+            for _ in range(self.num_static_channels)
+        ])    
+
+        # Static modality tags
+        self.static_tags = nn.Parameter(torch.randn(num_static_channels, 1, 1, embedding_dim))
+
+        # Dynamic embeds
+        self.dynamic_embeds = nn.ModuleList([
+            nn.Conv3d(in_channels = 1,
+                      out_channels = self.embedding_dim,
+                      # Kernel definition
+                      kernel_size = (self.num_timestamps_per_sample, self.patch_size, self.patch_size),
+                      stride = (self.num_timestamps_per_sample, self.patch_size, self.patch_size))
+            for _ in range(self.num_dynamic_channels)
+        ])
+
+
+        # Dynamic modality tags
+        self.dynamic_tags = nn.Parameter(torch.randn(self.num_dynamic_channels, 1, 1, self.embedding_dim))
+
+
+
         self.encoders = nn.ModuleList([
             nn.TransformerEncoder(
                 encoder_layer = nn.TransformerEncoderLayer(
@@ -73,19 +106,58 @@ class STViT(nn.Module):
         pos_embed = torch.cat([torch.sin(out_y), torch.cos(out_y), torch.sin(out_x), torch.cos(out_x)], dim=-1)
         return pos_embed.flatten(0, 1).unsqueeze(0)
 
-    def forward(self, x):
-        orig_h, orig_w = x.shape[-2:]
+    def forward(self, x_static, x_dynamic):
+
+        ## Pad input to be divisible by patch size via reflect method
+        # Pad static (4D): (B, C, H, W) -> (B, C, H+pad_h, W+pad_w)
+        orig_h, orig_w = x_static.shape[-2:]
         pad_h = (self.patch_size - orig_h % self.patch_size) % self.patch_size
         pad_w = (self.patch_size - orig_w % self.patch_size) % self.patch_size
-        x = F.pad(x, (0, pad_w, 0, pad_h), mode='reflect')
-        
-        batch_size, _, h_padded, w_padded = x.shape
-        h_grid, w_grid = h_padded // self.patch_size, w_padded // self.patch_size
 
-        x = x.view(batch_size * self.num_modules, 1, h_padded, w_padded)
+        pad_4d = (0, pad_w, 0, pad_h)  # (left, right, top, bottom)
+
+        x_static = F.pad(x_static, pad_4d, mode='reflect')
+
+        # Pad dynamic (5D): (B, C, T, H, W) -> (B, C, T, H+pad_h, W+pad_w)
+        pad_5d = (0, pad_w, 0, pad_h, 0, 0)
+        x_dynamic = F.pad(x_dynamic, pad_5d, mode='reflect')
+
+        ## Pre-produce 2d embeddings
+        print(orig_h, pad_h)
+
+        ## Embedding
+        # Patch embedding for static
+        embedded_static_tokens = []
+        for i, embed_layer in enumerate(self.static_embeds):
+            single_channel = x_static[:, i:i+1, :, :] # Slice
+
+            tokens = embed_layer(single_channel) # Embed
+            tokens = tokens.flatten(2).transpose(1,2) # Rearrange
+
+            tokens = tokens + self.static_tags[i] # Add static modularity token
+
+            embedded_static_tokens.append(tokens)
+
+            # TODO: 2d pos embedding here?
+            
+        # Tublet embedding for dynamic
+        embedded_dynamic_tokens = []
+        for i, embed_layer in enumerate(self.dynamic_embeds):
+            single_channel = x_dynamic[:, i:i+1, :, :, :] # Slice
+
+            tokens = embed_layer(single_channel)
+            tokens = tokens.squeeze(2) # Rearrange
+            tokens = tokens.flatten(2).transpose(1,2)
+            
+            tokens = tokens + self.dynamic_tags # Add dynamic modularity token
+
+            embedded_dynamic_tokens.append(tokens)
+
+        """
         x = self.patch_embedding(x)
         x = x.flatten(2).transpose(1, 2)
 
+    
         x = x + self.get_2d_pos_embed(h_grid, w_grid, x.device)
 
         # Self-Attention
@@ -114,3 +186,4 @@ class STViT(nn.Module):
         x = self.decoder(x)
         
         return x[:, 0, :orig_h, :orig_w]
+        """
