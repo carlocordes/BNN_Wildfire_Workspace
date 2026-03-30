@@ -122,8 +122,20 @@ class STViT(nn.Module):
         pad_5d = (0, pad_w, 0, pad_h, 0, 0)
         x_dynamic = F.pad(x_dynamic, pad_5d, mode='reflect')
 
+
+
         ## Pre-produce 2d embeddings
-        print(orig_h, pad_h)
+        padded_h, padded_w = x_static.shape[-2:]
+        grid_h = padded_h // self.patch_size
+        grid_w = padded_w // self.patch_size
+
+        spatial_pos_embed = self.get_2d_pos_embed(
+            grid_h = grid_h,
+            grid_w = grid_w,
+            device = x_static.device
+        )
+
+
 
         ## Embedding
         # Patch embedding for static
@@ -133,6 +145,8 @@ class STViT(nn.Module):
 
             tokens = embed_layer(single_channel) # Embed
             tokens = tokens.flatten(2).transpose(1,2) # Rearrange
+
+            tokens = tokens + spatial_pos_embed # Add 2D spatial embedding
 
             tokens = tokens + self.static_tags[i] # Add static modularity token
 
@@ -148,6 +162,8 @@ class STViT(nn.Module):
             tokens = embed_layer(single_channel)
             tokens = tokens.squeeze(2) # Rearrange
             tokens = tokens.flatten(2).transpose(1,2)
+
+            tokens = tokens + spatial_pos_embed # Add 2D spatial embedding
             
             tokens = tokens + self.dynamic_tags # Add dynamic modularity token
 
