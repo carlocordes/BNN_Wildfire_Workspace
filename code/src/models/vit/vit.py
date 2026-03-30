@@ -13,7 +13,6 @@ class STViT(nn.Module):
         embedding_dim : 
     """
     def __init__(self,
-                 num_modules : int,
                  num_static_channels : int,
                  num_dynamic_channels : int,
                  num_timestamps_per_sample : int,
@@ -24,7 +23,6 @@ class STViT(nn.Module):
         super().__init__()
         
         #Parameters
-        self.num_modules = num_modules
         self.patch_size = patch_size
         self.embedding_dim = embedding_dim
 
@@ -55,44 +53,49 @@ class STViT(nn.Module):
             for _ in range(self.num_dynamic_channels)
         ])
 
-
         # Dynamic modality tags
         self.dynamic_tags = nn.Parameter(torch.randn(self.num_dynamic_channels, 1, 1, self.embedding_dim))
 
-
-
-        self.encoders = nn.ModuleList([
-            nn.TransformerEncoder(
-                encoder_layer = nn.TransformerEncoderLayer(
-                    d_model = self.embedding_dim, # Embedding dimension of input
-                    nhead = 4,                    # Number of attention heads
-                    dim_feedforward = 128,
-                    dropout = 0.01,
-                    batch_first = True,
-                ),
-                num_layers = 4
-            )
-            for _ in range(num_modules)
+        # Self-Attention blocks
+        self.static_encoders = nn.ModuleList([
+            nn.TransformerEncoderLayer(d_model = self.embedding_dim, nhead = 4, batch_first = True)
+            for _ in range(self.num_static_channels)
         ])
 
-        self.num_cross_layers = 4
-        self.cross_encoder = nn.ModuleList([
-            nn.MultiheadAttention(embed_dim = self.embedding_dim,
-                                  num_heads = 4,
-                                  batch_first = True
-            )
-            for _ in range(self.num_cross_layers)
+        self.dynamic_encoders = nn.ModuleList([
+            nn.TransformerEncoderLayer(d_model = self.embedding_dim, nhead = 4, batch_first = True)
+            for _ in range(self.num_dynamic_channels)
         ])
 
+        # Mixers for concat operations
+        self.static_mixer = nn.Linear(self.num_static_channels * self.embedding_dim, self.embedding_dim)
+        self.dynamic_mixer = nn.Linear(self.num_dynamic_channels * self.embedding_dim, self.embedding_dim)
+
+        # Cross-Attention block
+        self.module_fusion = nn.MultiheadAttention(
+            embed_dim=embedding_dim,
+            num_heads = 8,
+            batch_first = True
+        )
+
+        # Decoder
         self.decoder = nn.Sequential(
-            nn.Conv2d(self.embedding_dim, self.embedding_dim // 2,
-                      kernel_size=3,
-                      padding=1),
-            nn.ReLU(),
-            nn.Upsample(scale_factor=self.patch_size,
-                        mode="bilinear",
-                        align_corners=False),
-            nn.Conv2d(self.embedding_dim // 2, 1, kernel_size=1)
+            # Step 1: Feature compression and initial refinement
+            nn.Conv2d(self.embedding_dim, self.embedding_dim // 2, kernel_size=3, padding=1),
+            nn.BatchNorm2d(self.embedding_dim // 2),
+            nn.ReLU(inplace=True),
+            
+            # Step 2: First Upsample (4x)
+            nn.Upsample(scale_factor=4, mode="bilinear", align_corners=False),
+            nn.Conv2d(self.embedding_dim // 2, self.embedding_dim // 4, kernel_size=3, padding=1),
+            nn.BatchNorm2d(self.embedding_dim // 4),
+            nn.ReLU(inplace=True),
+            
+            # Step 3: Second Upsample (4x) to reach original resolution
+            nn.Upsample(scale_factor=4, mode="bilinear", align_corners=False),
+            
+            # Step 4: Final prediction head (Collapse to 1 channel for binary Fire/No-Fire)
+            nn.Conv2d(self.embedding_dim // 4, 1, kernel_size=1)
         )
 
     def get_2d_pos_embed(self, grid_h, grid_w, device):
@@ -151,8 +154,6 @@ class STViT(nn.Module):
             tokens = tokens + self.static_tags[i] # Add static modularity token
 
             embedded_static_tokens.append(tokens)
-
-            # TODO: 2d pos embedding here?
             
         # Tublet embedding for dynamic
         embedded_dynamic_tokens = []
@@ -165,41 +166,51 @@ class STViT(nn.Module):
 
             tokens = tokens + spatial_pos_embed # Add 2D spatial embedding
             
-            tokens = tokens + self.dynamic_tags # Add dynamic modularity token
+            tokens = tokens + self.dynamic_tags[i] # Add dynamic modularity token
 
             embedded_dynamic_tokens.append(tokens)
 
-        """
-        x = self.patch_embedding(x)
-        x = x.flatten(2).transpose(1, 2)
 
-    
-        x = x + self.get_2d_pos_embed(h_grid, w_grid, x.device)
 
-        # Self-Attention
-        x = x.view(batch_size, self.num_modules, -1, self.embedding_dim)
-        encoded_x = []
-        for i, encoder in enumerate(self.encoders):
-            encoded_x.append(encoder(x[:, i]))
-        x = torch.stack(encoded_x, dim = 1)
+        ## Encoding
+        encoded_static = []
+        for i, tokens in enumerate(embedded_static_tokens):
+            encoded_static.append(self.static_encoders[i](tokens))
 
-        # Cross-Attention
-        mod0_tokens = x[:, 0, :, :]
-        mod1_tokens = x[:, 1, :, :]
+        encoded_dynamic = []
+        for i, tokens in enumerate(embedded_dynamic_tokens):
+            encoded_dynamic.append(self.dynamic_encoders[i](tokens))
 
-        for i, crossattention in enumerate(self.cross_encoder):
-            attn_out, _ = crossattention(query = mod0_tokens, # 0 queries 1
-                                            key = mod1_tokens,
-                                            value = mod1_tokens)
-            
-            mod0_tokens = mod0_tokens + attn_out
 
-        x = mod0_tokens # Isolating module 0 for prediction head
 
-        x = x.transpose(1, 2).view(batch_size, self.embedding_dim, h_grid, w_grid)
-
-        # Decode
-        x = self.decoder(x)
+        ## Modality mixing (stacking modalities)
+        # Stack
+        static_concat = torch.cat(encoded_static, dim = -1)
+        dynamic_concat = torch.cat(encoded_dynamic, dim = -1)
         
-        return x[:, 0, :orig_h, :orig_w]
-        """
+        # Retain embedding dimension
+        static_mixed = self.static_mixer(static_concat)
+        dynamic_mixed = self.dynamic_mixer(dynamic_concat)
+
+
+
+        ## Final fusion
+        fused_output, _ = self.module_fusion(
+            query = dynamic_mixed,
+            key = static_mixed,
+            value = static_mixed
+        )
+
+        fused_tokens = dynamic_mixed + fused_output # Add residual
+
+        
+
+        ## Decoder
+        batch_size, _, __ = fused_tokens.shape
+        x_2d = fused_tokens.transpose(1,2).view(batch_size, self.embedding_dim, grid_h, grid_w) # Reshape to (B, emb_dim, grid_h, grid_w)
+
+        pred_map = self.decoder(x_2d)
+
+        pred_map = pred_map[:, 0, :orig_h, :orig_w] # "Un-pad" to original dimensions
+
+        return(pred_map)
