@@ -6,6 +6,7 @@ from src.data.download.dtm import get_one_dtm_image
 from src.data.download.lst_modis import download_yearly_lst
 from src.data.download.burn_targets import ingest_burn_records
 from src.data.download.era5_wind import download_era5_wind_image
+from src.data.download.ndvi import download_ndvi_catalogue
 
 # External
 from pathlib import Path
@@ -48,7 +49,7 @@ class DataDownloader():
 
         # Perform downloads to paths
         cfg_data_paths = cfg['data_paths']
-
+        """
         # MODIS LST
         cfg_modis_path = Path(cfg_data_paths['processed']['LST'])
         download_yearly_lst(cfg_modis_path, portugal_ggrid)
@@ -60,6 +61,11 @@ class DataDownloader():
         # Targets
         cfg_burn_config = cfg_data_paths['raw']['target']
         ingest_burn_records(cfg_burn_config)
+        """
+        # MODIS NDVI (Normalized Difference Vegetation Index)
+        cfg_ndvi_path = Path(cfg_data_paths['processed']['NDVI'])
+        download_ndvi_catalogue(cfg_ndvi_path, portugal_ggrid)
+
 
         print('Completed Download')
 
