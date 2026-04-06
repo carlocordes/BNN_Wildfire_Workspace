@@ -7,6 +7,9 @@ import geemap
 import ee
 
 def download_one_modis_ndvi_image(date : str, golden_grid :GoldenGrid, out_path : Path):
+
+    out_path.mkdir(parents=True, exist_ok=True)
+
     start = ee.Date(date)
     end = start.advance(1, "day")
 
