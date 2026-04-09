@@ -57,15 +57,15 @@ class DataDownloader():
         # DTM
         cfg_dtm_path = Path(cfg_data_paths["processed"]['DTM'])
         get_one_dtm_image(cfg_dtm_path, portugal_ggrid)
-
+        """
         # Targets
         cfg_burn_config = cfg_data_paths['raw']['target']
         ingest_burn_records(cfg_burn_config)
 
         # MODIS NDVI (Normalized Difference Vegetation Index)
         cfg_ndvi_path = Path(cfg_data_paths['processed']['NDVI'])
-        download_ndvi_catalogue(cfg_ndvi_path, portugal_ggrid)
-        """
+        #download_ndvi_catalogue(cfg_ndvi_path, portugal_ggrid)
+
 
         # ERA-5 wind
         cfg_wind_speed_path = Path(cfg_data_paths['processed']['wind_speed'])
