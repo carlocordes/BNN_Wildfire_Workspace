@@ -6,6 +6,8 @@ import glob
 from pathlib import Path
 from omegaconf import OmegaConf
 import argparse
+from datetime import datetime, timedelta
+import pandas as pd
 
 import rasterio
 import torch
@@ -15,73 +17,153 @@ class Dataset_Builder():
     def __init__(self, config_path : Path):
         self.config_path = config_path
 
-    def save(self, dataset_name : str):
-        # Read out config
-        cfg = OmegaConf.load(self.config_path)
-        cfg_data = cfg['data_paths']['processed']
-        paths_a = cfg_data['LST']
-        paths_b = cfg_data['DTM']
-        paths_t = cfg_data['target']
+        # Load config
+        self.cfg = OmegaConf.load(self.config_path)
+        self.cfg_data = self.cfg['data_paths']['processed']
+        cfg_temporal = self.cfg['data']['temporal_extent']
 
-        # Files at a (Input 1)
-        files_a = glob.glob(str(paths_a) + '/*.tif')
-        files_a.sort()
+        self.timeframes = self.get_timeframes(cfg_temporal = cfg_temporal)
 
-        # Files at t (Target)
-        files_c = glob.glob(str(paths_t) + '/*.tif')
-        files_c.sort()
+    def get_timeframes(self, cfg_temporal):
+         # Build timeframes
+        sequence_extent = cfg_temporal['sample_extent'] + cfg_temporal['target_extent'] + cfg_temporal['lead_time'] # Length of entire sequence
+        
+        start_date = datetime.strptime(cfg_temporal['start_date'], "%Y-%m-%d")
+        end_date = datetime.strptime(cfg_temporal['end_date'], "%Y-%m-%d")
+        
+        testing_extent = (end_date -start_date).days + 1 # Number of unique days considered
+        #print(f'Sequence Extent: {sequence_extent}')
 
-        print(f'Creating dataset from {len(files_a)} file pairs')
+        num_sequences = (testing_extent - sequence_extent) // cfg_temporal['sequence_period'] + 1
+        #print(f'Number of sequences: {num_sequences}')
 
+        
+        timeframes = []
+        for i in range(num_sequences):
+            current_sequence = {}
 
-        all_inputs = []
-        all_targets = []
+            # Sample Dates
+            sample_start_date = start_date + timedelta(days = i*cfg_temporal['sequence_period'])
+            sample_end_date = sample_start_date + timedelta(days = cfg_temporal['sample_extent'] - 1)
 
-        # # Read static DTM first (once)
-        path_b = glob.glob(str(paths_b) + '/*.tif')[0]
-        with rasterio.open(path_b) as src:
-            img_b = torch.from_numpy(src.read(1)).float()
+            sample = pd.date_range(start = sample_start_date, end = sample_end_date, freq = f'{cfg_temporal["day_interval"]}D')
+            sample = sample.strftime("%Y-%m-%d").tolist()
 
-
-        # Iterate through the triplets
-        for a_path, c_path in zip(files_a, files_c):
-            # Read Image A (Dynamic Input)
-            with rasterio.open(a_path) as src:
-                # .read(1) gets the first band; result is a numpy array
-                img_a = torch.from_numpy(src.read(1)).float()
-
-            # Read Image C (Target)
-            with rasterio.open(c_path) as src:
-                img_t = torch.from_numpy(src.read(1)).float()
-
-            # Stack inputs into shape (2, height, width)
-            stacked_input = torch.stack([img_a, img_b], dim=0)
+            # Target dates
+            target_start_date = sample_start_date + timedelta(days = cfg_temporal['sample_extent'] + cfg_temporal['lead_time']-1)
+            target_end_date = target_start_date + timedelta(days = cfg_temporal['target_extent'] - 1)
             
-            # Add to lists (Target becomes (1, height, width) to stay 3D)
-            all_inputs.append(stacked_input)
-            all_targets.append(img_t.unsqueeze(0))
+            target = pd.date_range(start = target_start_date, end = target_end_date, freq = f'{cfg_temporal["day_interval"]}D')
+            target = target.strftime("%Y-%m-%d").tolist()
 
-        # Convert lists to massive 4D tensors: (N, C, H, W)
-        final_input_tensor = torch.stack(all_inputs)
-        final_target_tensor = torch.stack(all_targets)
 
-        out_tensor = TensorDataset(final_input_tensor, final_target_tensor)
+            # Store and append
+            current_sequence = {
+                'sample' : sample,
+                'target' : target,
+            }
 
-        # print some dataset info
-        sample_input, sample_target = out_tensor[0]
+            timeframes.append(current_sequence)
 
-        print(f"Input shape (C, H, W): {sample_input.shape}")   # Should be (2, 311, 609)
-        print(f"Target shape (C, H, W): {sample_target.shape}")  # Should be (1, 311, 609)
+        return timeframes
 
-        # 3. Access total memory footprint (in bytes)
-        input_bytes = out_tensor.tensors[0].element_size() * out_tensor.tensors[0].nelement()
-        print(f"Total RAM used by inputs: {input_bytes / 1e9:.2f} GB")
+    def build(self, dataset_name : str):
 
-        torch.save(out_tensor, f = DATASETS / (dataset_name + '.pt'))
+        ## Define source paths
+        sample_base_paths = [           
+            Path(self.cfg_data['NDVI']),
+            Path(self.cfg_data['wind_speed']),
+            Path(self.cfg_data['wind_dir_v']),
+            Path(self.cfg_data['wind_dir_u'])
+        ]
+
+        target_base_path = Path(self.cfg_data['target']) # TODO: Switch to other ground truth
+
+
+        static_base_paths = [
+            Path(self.cfg_data['aspect']),
+            Path(self.cfg_data['slope']) # TODO: Add paths
+        ]
+
+
+        ## Load dynamic data
+        sample_tensors = []
+        target_tensors = []
+        for timeframe in self.timeframes:
+            
+            channel_sample_tensors = []
+
+            # Iterate through sample channels
+            for path in sample_base_paths:
+
+                time_sample_tensors = []
+
+                # Iterate thorugh time stamps
+                for t in timeframe['sample']:
+                    filename = t + '.tif'
+                    fp = path / filename
+                    
+                    with rasterio.open(fp) as src:
+                        img = torch.from_numpy(src.read(1)).float()
+                        time_sample_tensors.append(img)
+                        
+                channel_sample_data = torch.stack(time_sample_tensors, dim = 0)
+                channel_sample_tensors.append(channel_sample_data)
+
+            sequence__sample_data = torch.stack(channel_sample_tensors, dim = 0)
+            sample_tensors.append(sequence__sample_data)
+
+
+            time_target_tensors = []
+
+            # Iterate through target
+            for t in timeframe['target'][:1]: # Only take first of target sequence
+                filename = t + '.tif'
+                fp = target_base_path / filename
+
+                with rasterio.open(fp) as src:
+                    img = torch.from_numpy(src.read(1)).float()
+                    time_target_tensors.append(img)
+
+            time_target_data = torch.stack(time_target_tensors, dim = 0)
+            target_tensors.append(time_target_data)
+
+
+        sample_data = torch.stack(sample_tensors, dim = 0)
+        target_data = torch.stack(target_tensors, dim = 0)
+
+
+        static_tensors = []
+        for path in static_base_paths:
+            tif_files = glob.glob(str(path) + '/*.tif')
+
+            for fp in tif_files:
+
+                with rasterio.open(fp) as src:
+                    img = torch.from_numpy(src.read(1)).float()
+                    static_tensors.append(img)
+
+        static_data = torch.stack(static_tensors, dim = 0)
+
+        ## Concat
+        tensors_dict = {
+            'dynamic' : sample_data,
+            'static' : static_data,
+            'target' : target_data,
+        }
+
+        print(f"Produced dataset {dataset_name} with {tensors_dict['static'].shape[0]} static " \
+              f"and {tensors_dict['dynamic'].shape[1]} with {tensors_dict['dynamic'].shape[2]} timesteps each")
+        ## Save
+        out_path = Path(self.cfg['data_sets']['path'] ) / (dataset_name + '.pt')
+        torch.save(obj = tensors_dict, f = out_path)
+        print(f'Saved to {out_path}')
+
+
 
 def main(config_path : Path, dataset_name : str):
     dataset = Dataset_Builder(config_path)
-    dataset.save(dataset_name)
+    dataset.build(dataset_name)
 
 
 if __name__ == '__main__':

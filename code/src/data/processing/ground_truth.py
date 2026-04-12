@@ -14,6 +14,11 @@ import rasterio
 from rasterio.features import rasterize
 from rasterio.transform import from_origin
 
+# PARAMS # TODO: Later replace with config parameters passed to func
+target_extent_days = 4
+temporal_sigma = 3
+spatial_sigma = 3000 # meters
+
 
 def grid_target_map(path_to_db : Path,
                     out_path : Path,
@@ -42,16 +47,29 @@ def grid_target_map(path_to_db : Path,
     for start_date in golden_grid.dates:
         end_date = start_date + pd.Timedelta(days = golden_grid.day_interval)
 
-        mask = (points['acq_date'] >= start_date) & (points['acq_date'] < end_date)
+        window_start = start_date - pd.Timedelta(days=target_extent_days)
+        window_end   = end_date + pd.Timedelta(days=target_extent_days)
+
+        mask = (points['acq_date'] >= window_start) & (points['acq_date'] < window_end)
         subset_gdf = points.loc[mask].copy()
 
-        date_str = start_date.strftime('%Y_%m_%d')
+        # Produce temporal weights
+        center_date = start_date + pd.Timedelta(days=golden_grid.day_interval / 2)
+
+        subset_gdf["time_diff"] = (subset_gdf["acq_date"] - center_date).dt.days.abs()
+
+        subset_gdf["time_weight"] = np.exp(
+            - (subset_gdf["time_diff"] ** 2) / (2 * temporal_sigma ** 2)
+        )
+
+        date_str = start_date.strftime('%Y-%m-%d')
         print(f"Interval {date_str} to {end_date.strftime('%Y-%m-%d')} | Points found: {len(subset_gdf)}")
 
         rasterize_points(points = subset_gdf,
                          date_str = date_str,
                          out_path  = out_path,
                          golden_grid = golden_grid)
+
 
 def rasterize_points(points: gpd.GeoDataFrame,
                      date_str: str,
@@ -80,26 +98,48 @@ def rasterize_points(points: gpd.GeoDataFrame,
 
     #Project points and handle empty selections
     points_proj = points.to_crs(golden_grid.crs)
-    
-    if points_proj.empty:
-        # If no fires occurred in this 8-day window, create a blank array of zeros
-        binary_raster = np.zeros((height, width), dtype="uint8")
-    else:
-        # Create list of (geometry, 1) pairs for rasterio
-        shapes = ((geom, 1) for geom in points_proj.geometry)
-        
-        binary_raster = rasterize(
-            shapes=shapes,
-            out_shape=(height, width),
-            transform=transform,
-            fill=0,
-            dtype="uint8",
-            all_touched=False 
-        )
+    heatmap = np.zeros((height, width), dtype="float32")
+
+    points_proj = points.to_crs(golden_grid.crs)
+
+    if not points_proj.empty:
+
+        for _, row in points_proj.iterrows():
+            x, y = row.geometry.x, row.geometry.y
+            time_weight = row["time_weight"]
+
+            # Convert to pixel coordinates
+            col = int((x - minx_snapped) / golden_grid.scale)
+            row_pix = int((maxy_snapped - y) / golden_grid.scale)
+
+            radius = int(3 * spatial_sigma / golden_grid.scale)
+
+            for dx in range(-radius, radius + 1):
+                for dy in range(-radius, radius + 1):
+
+                    cx = col + dx
+                    cy = row_pix + dy
+
+                    if 0 <= cx < width and 0 <= cy < height:
+
+                        dist = np.sqrt(
+                            (dx * golden_grid.scale) ** 2 +
+                            (dy * golden_grid.scale) ** 2
+                        )
+
+                        spatial_weight = np.exp(
+                            - (dist ** 2) / (2 * spatial_sigma ** 2)
+                        )
+
+                        contribution = time_weight * spatial_weight
+
+                        # probabilistic accumulation
+                        heatmap[cy, cx] = 1 - (1 - heatmap[cy, cx]) * (1 - contribution)
+
 
     # Write the file safely
     out_path.mkdir(parents=True, exist_ok=True)
-    output_file = out_path / f"anom_{date_str}.tif"
+    output_file = out_path / f"{date_str}.tif"
 
     with rasterio.open(
         output_file,
@@ -108,12 +148,12 @@ def rasterize_points(points: gpd.GeoDataFrame,
         height=height,
         width=width,
         count=1,
-        dtype="uint8",
+        dtype="float32",
         crs=golden_grid.crs,
         transform=transform,
         compress="lzw" # Highly recommended: drastically reduces file size for binary data
     ) as dst:
-        dst.write(binary_raster, 1)
+        dst.write(heatmap, 1)
         
     print(f"Rasterized {len(points_proj)} points for {date_str} to {output_file.name}")
 
@@ -126,7 +166,7 @@ if __name__ == '__main__':
     latmax, longmax = 42.2724, -6.0234
 
     start_date = '2024-01-01'
-    end_date = '2024-12-31'
+    end_date = '2024-08-31'
 
     portugal_ggrid = GoldenGrid(
         crs = 'EPSG:3763',
@@ -134,11 +174,11 @@ if __name__ == '__main__':
         bbox = [longmin, latmin, longmax, latmax],
         start_date = start_date,
         end_date = end_date,
-        day_interval = 7
+        day_interval = 8
     )
 
     #ingest_burn_records(path_to_csv = Path('data', 'raw', 'burn'))
 
     grid_target_map(path_to_db = Path('data', 'raw', 'burn', 'burn_points.db'),
-                    out_path = Path('data', 'processed', 'burn'),
+                    out_path = Path('data', 'test', 'burned_area'),
                     golden_grid = portugal_ggrid)
