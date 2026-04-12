@@ -44,13 +44,15 @@ data_paths:
       csv: 'data/raw/burn'
       db_name: 'burn_points.db'
       table_name: 'burn_points'
+    DTM: 'data/raw/elevation'
   processed:
     LST: 'data/processed/LST'
-    DTM: 'data/processed/elevation'
     NDVI: 'data/processed/NDVI'
     wind_speed : 'data/processed/wind_speed'
     wind_dir_u : 'data/processed/wind_dir_WE'
     wind_dir_v : 'data/processed/wind_dir_SN'
+    slope : 'data/processed/slope'
+    aspect : 'data/processed/aspect'
     target: 'data/processed/burn'
 
     

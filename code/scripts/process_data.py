@@ -2,6 +2,7 @@
 from src.core.goldengrid import GoldenGrid
 from src.core.utils import load_config
 from src.data.processing.ground_truth import grid_target_map
+from src.data.processing.dtm_derivatives import dtm_derivatives
 
 
 # External
@@ -14,7 +15,7 @@ class DataProcessor():
 
 
     def process(self):
-        print('Fetching configs')
+        print(f'Fetching configs fom {self.config_path}')
 
         cfg = load_config(self.config_path)
 
@@ -47,7 +48,17 @@ class DataProcessor():
         grid_target_map(path_to_db=cfg_db_path,
                         out_path=cfg_target_path,
                         golden_grid=portugal_ggrid)
-        
+
+        # 2. DTM derivatives
+        cfg_data_dtm = Path(cfg_data_paths['raw']['DTM'])
+        cfg_data_slope = Path(cfg_data_paths['processed']['slope'])
+        cfg_data_aspect = Path(cfg_data_paths['processed']['aspect'])
+        dtm_derivatives(golden_grid = portugal_ggrid,
+                        path_to_dtm = cfg_data_dtm,
+                        path_to_aspect = cfg_data_aspect,
+                        path_to_slope = cfg_data_slope)
+
+
         # Add other processes here
         #
         #

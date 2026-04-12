@@ -79,10 +79,12 @@ class Dataset_Builder():
 
         target_base_path = Path(self.cfg_data['target']) # TODO: Switch to other ground truth
 
+
         static_base_paths = [
-            Path(self.cfg_data['DTM']) # TODO: Add paths
+            Path(self.cfg_data['aspect']),
+            Path(self.cfg_data['slope']) # TODO: Add paths
         ]
-        
+
 
         ## Load dynamic data
         sample_tensors = []
@@ -131,14 +133,15 @@ class Dataset_Builder():
         target_data = torch.stack(target_tensors, dim = 0)
 
 
-        ## Load static data
         static_tensors = []
         for path in static_base_paths:
-            fp = glob.glob(str(path) + '/*.tif')[0]
-            print(fp)
-            with rasterio.open(fp) as src:
-                img = torch.from_numpy(src.read(1)).float()
-                static_tensors.append(img)
+            tif_files = glob.glob(str(path) + '/*.tif')
+
+            for fp in tif_files:
+
+                with rasterio.open(fp) as src:
+                    img = torch.from_numpy(src.read(1)).float()
+                    static_tensors.append(img)
 
         static_data = torch.stack(static_tensors, dim = 0)
 
@@ -149,9 +152,12 @@ class Dataset_Builder():
             'target' : target_data,
         }
 
+        print(f"Produced dataset {dataset_name} with {tensors_dict['static'].shape[0]} static " \
+              f"and {tensors_dict['dynamic'].shape[1]} with {tensors_dict['dynamic'].shape[2]} timesteps each")
         ## Save
         out_path = Path(self.cfg['data_sets']['path'] ) / (dataset_name + '.pt')
         torch.save(obj = tensors_dict, f = out_path)
+        print(f'Saved to {out_path}')
 
 
 

@@ -2,6 +2,7 @@
 from src.core.goldengrid import GoldenGrid
 
 # External
+import glob
 import numpy as np
 import rasterio
 from pathlib import Path
@@ -19,8 +20,8 @@ def dtm_derivatives(
     - aspect_NS.tif
     - aspect_EW.tif
     """
-
-    with rasterio.open(path_to_dtm) as src:
+    dtm_file = next(path_to_dtm.glob('*.tif'))
+    with rasterio.open(dtm_file) as src:
         dtm = src.read(1, masked=True)
         transform = src.transform
         profile = src.profile

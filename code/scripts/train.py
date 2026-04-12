@@ -35,7 +35,8 @@ class WildfireDataset(Dataset):
 
 # Dataset-info
 def get_dataset_parameters(dataset : str):
-    
+    print(f"Loaded dataset with {dataset['static'].shape[0]} static "\
+          f"and {dataset['dynamic'].shape[1]} with {dataset['dynamic'].shape[2]} timesteps each")
     return {
         'num_static_channels' : dataset['static'].shape[0],
         'num_dynamic_channels' : dataset['dynamic'].shape[1],
@@ -83,9 +84,6 @@ def train(model, loss_fn, dataloader, cfg_training, device):
 
             # Pass forward
             preds = model(x_static = static_x, x_dynamic = dynamic_x)
-
-            print(preds.shape)
-            print(targets.shape)
 
             # Loss
             loss = loss_fn(preds, targets)
