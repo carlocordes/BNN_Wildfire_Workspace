@@ -7,11 +7,14 @@ from src.models.vit.vit import STViT
 from pathlib import Path
 import argparse
 from omegaconf import OmegaConf
+import logging
+from datetime import datetime
 
 import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader, Dataset
+from torch.utils.tensorboard import SummaryWriter
 
 class WildfireDataset(Dataset):
     """
@@ -35,8 +38,8 @@ class WildfireDataset(Dataset):
 
 # Dataset-info
 def get_dataset_parameters(dataset : str):
-    print(f"Loaded dataset with {dataset['static'].shape[0]} static "\
-          f"and {dataset['dynamic'].shape[1]} with {dataset['dynamic'].shape[2]} timesteps each")
+    logging.info(f"Loaded dataset with {dataset['static'].shape[0]} static "\
+                 f"and {dataset['dynamic'].shape[1]} with {dataset['dynamic'].shape[2]} timesteps each")
     return {
         'num_static_channels' : dataset['static'].shape[0],
         'num_dynamic_channels' : dataset['dynamic'].shape[1],
@@ -68,85 +71,108 @@ def build_model(cfg_model, device, ds_info):
 
 
 # Training
-def train(model, loss_fn, dataloader, cfg_training, device):
+def train(model, loss_fn, dataloader, cfg_training, device, writer, model_save_path):
     optimizer = optim.Adam(model.parameters(), lr=cfg_training["learning_rate"])
+    
+    # Track the best loss to save the best model state
+    best_loss = float('inf') 
 
     model.train()
+    logging.info("Starting training loop...")
 
     for epoch in range(cfg_training['num_epochs']):
         epoch_loss = 0.0
 
-        for batch in dataloader:
-
+        for batch_idx, batch in enumerate(dataloader):
             static_x = batch['static'].to(device)
             dynamic_x = batch['dynamic'].to(device)
             targets = batch['target'].to(device)
 
-            # Pass forward
-            preds = model(x_static = static_x, x_dynamic = dynamic_x)
-
-            # Loss
+            preds = model(x_static=static_x, x_dynamic=dynamic_x)
             loss = loss_fn(preds, targets)
 
-            optimizer.zero_grad() # zero gradients
-            loss.backward() # Calculate losses
-            optimizer.step() # Update weights
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
 
-            epoch_loss += loss.item() # Calculate loss
+            epoch_loss += loss.item()
 
         avg_loss = epoch_loss / len(dataloader)
-        print(f"Epoch [{epoch+1}/{cfg_training['num_epochs']}] - Loss: {avg_loss:.6f}")
+        logging.info(f"Epoch [{epoch+1}/{cfg_training['num_epochs']}] - Loss: {avg_loss:.6f}")
+        
+        # 1. Log to TensorBoard
+        writer.add_scalar('Training/Loss', avg_loss, epoch)
 
+        # 2. Save the model ONLY if it improved (Best Practice)
+        if avg_loss < best_loss:
+            best_loss = avg_loss
+            torch.save(model.state_dict(), model_save_path)
+            logging.info(f"--> Validation loss improved. Model saved to {model_save_path}")
+
+    logging.info("Training complete.")
 
 # ----------------------------
 # Main
 # ----------------------------
+def main(experiment_path: Path, config_path: Path, dataset_name: str):
+    
+    # --- NEW: Setup Logging Directory and File ---
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    run_name = f"{dataset_name[:-3]}_{timestamp}"
+    log_dir = experiment_path / run_name
+    log_dir.mkdir(parents=True, exist_ok=True)
 
-def main(config_path: Path, dataset_name: str):
+    # Configure Python Logging
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s [%(levelname)s] %(message)s",
+        handlers=[
+            logging.FileHandler(log_dir / "training.log"), # Save to file
+            logging.StreamHandler() # Print to console
+        ]
+    )
+    
+    # Initialize TensorBoard Writer
+    writer = SummaryWriter(log_dir=str(log_dir))
 
     # ---- Load config ----
     cfg = load_config(config_path)
-    cfg_data = cfg["data"]
     cfg_model = cfg["model"]
     cfg_training = cfg["training"]
-    cfg_data_sets = cfg["data_sets"]
 
-    # ---- Device ----
-    device = (
-        torch.accelerator.current_accelerator().type
-        if torch.accelerator.is_available()
-        else "cpu"
-    )
-    print(f"Using {device} device")
+    device = torch.accelerator.current_accelerator().type if torch.accelerator.is_available() else "cpu"
+    logging.info(f"Using {device} device")
 
     # ---- Load Data ----
-    dataset_path = DATASETS / f'{dataset_name}.pt'
-    print(f'Loading dataset from: {dataset_path}')
-    dataset_dict = torch.load(dataset_path, weights_only = False)
+    dataset_path = DATASETS / dataset_name
+    logging.info(f"Loading dataset from: {dataset_path}")
+    dataset_dict = torch.load(dataset_path, weights_only=False)
 
     # ---- Build components ----
     dataloader = build_dataloader(dataset_dict, cfg_training)
-    ds_info = get_dataset_parameters(dataset = dataset_dict)
+    ds_info = get_dataset_parameters(dataset_dict)
 
-    model = build_model(cfg_model = cfg_model, device = device, ds_info = ds_info)
-    loss_fn = nn.BCEWithLogitsLoss(pos_weight = torch.Tensor([cfg_training["pos_weight"]])).to(device)
+    model = build_model(cfg_model, device, ds_info)
+    loss_fn = nn.BCEWithLogitsLoss(pos_weight=torch.Tensor([cfg_training["pos_weight"]])).to(device)
+
+    # --- Define Save Path ---
+    experiment_path.mkdir(exist_ok=True)
+    model_save_path = experiment_path / f"{run_name}_best.pt"
 
     # ---- Train ----
-    train(model, loss_fn, dataloader, cfg_training, device)
-    """
-    # ---- Save model ----
-    model_dir = MODELS / (dataset_name + "_model.pt")
-    print(f'Storing model as {model_dir}')
-    torch.save(model.state_dict(), f = model_dir)
+    train(model, loss_fn, dataloader, cfg_training, device, writer, model_save_path)
 
-    """
+    # Close the TensorBoard writer
+    writer.close()
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", type=Path, required=True)
     parser.add_argument("--datasetname", type=str, required=True)
+    parser.add_argument("--experiment_path", type=Path, required=True)
 
     args = parser.parse_args()
-    main(args.config, args.datasetname)
+    main(args.experiment_path, args.config, args.datasetname)
 
     # Example usage from /code:
-    # uv run -m scripts.train --config configs/project.yaml --datasetname test
+    # uv run -m scripts.train --config configs/project.yaml --datasetname test.pt

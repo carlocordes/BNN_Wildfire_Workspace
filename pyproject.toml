@@ -13,6 +13,7 @@ dependencies = [
     "numpy<=2.4.1",
     "omegaconf>=2.3.0",
     "rasterio<=1.4",
+    "tensorboard>=2.20.0",
     "torch==2.9.1",
     "torchvision==0.24.1",
 ]
