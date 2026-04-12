@@ -32,7 +32,7 @@ model:
 
 training:
   learning_rate: 0.0001
-  num_epochs: 20
+  num_epochs: 1 # 20
   loss_function : "weighted_bce" # "mse"
   pos_weight : 80
   batch_size: 4

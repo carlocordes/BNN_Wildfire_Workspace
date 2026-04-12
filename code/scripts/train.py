@@ -11,29 +11,57 @@ from omegaconf import OmegaConf
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, Dataset
+
+class WildfireDataset(Dataset):
+    """
+    Dataset wrapper
+    """
+    def __init__(self, data_dict):
+        self.static = data_dict['static']
+        self.dynamic = data_dict['dynamic']
+        self.target = data_dict['target']
+
+    def __len__(self):
+        return len(self.dynamic)
+    
+    def __getitem__(self, idx):
+        return {
+            'static' : self.static,
+            'dynamic' : self.dynamic[idx],
+            'target' : self.target[idx]
+        }
+
+
+# Dataset-info
+def get_dataset_parameters(dataset : str):
+    
+    return {
+        'num_static_channels' : dataset['static'].shape[0],
+        'num_dynamic_channels' : dataset['dynamic'].shape[1],
+        'num_timestamps_per_sample' : dataset['dynamic'].shape[2]
+    }
 
 
 # Dataset
-def build_dataloader(cfg_dataset, cfg_training, dataset_name):
-    dataset_path = DATASETS / f"{dataset_name}.pt"
+def build_dataloader(data_dict, cfg_training):
 
-    dataset = torch.load(dataset_path, weights_only=False)
-
-    print(f"Loaded dataset from: {dataset_path} | Samples: {len(dataset)}")
+    dataset = WildfireDataset(data_dict)
     return DataLoader(
         dataset,
         batch_size=cfg_training["batch_size"],
-        shuffle=True
+        shuffle=False # Dont shuffle chronological data
     )
 
 
 # Model
-def build_model(cfg_model, device):
+def build_model(cfg_model, device, ds_info):
     model = STViT(
-        num_modules=cfg_model["num_modules"],
-        patch_size=cfg_model["patch_size"],
-        embedding_dim=cfg_model["embedding_dim"]
+        num_static_channels = ds_info['num_static_channels'],
+        num_dynamic_channels = ds_info['num_dynamic_channels'],
+        num_timestamps_per_sample = ds_info['num_timestamps_per_sample'],
+        patch_size = cfg_model['patch_size'],
+        embedding_dim = cfg_model['embedding_dim']
     )
     return model.to(device)
 
@@ -44,21 +72,29 @@ def train(model, loss_fn, dataloader, cfg_training, device):
 
     model.train()
 
-    for epoch in range(cfg_training["num_epochs"]):
+    for epoch in range(cfg_training['num_epochs']):
         epoch_loss = 0.0
 
-        for inputs, targets in dataloader:
-            inputs = inputs.to(device)
-            targets = targets.to(device)
+        for batch in dataloader:
 
-            preds = model(inputs)
-            loss = loss_fn(preds, targets.squeeze(1))
+            static_x = batch['static'].to(device)
+            dynamic_x = batch['dynamic'].to(device)
+            targets = batch['target'].to(device)
 
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
+            # Pass forward
+            preds = model(x_static = static_x, x_dynamic = dynamic_x)
 
-            epoch_loss += loss.item()
+            print(preds.shape)
+            print(targets.shape)
+
+            # Loss
+            loss = loss_fn(preds, targets)
+
+            optimizer.zero_grad() # zero gradients
+            loss.backward() # Calculate losses
+            optimizer.step() # Update weights
+
+            epoch_loss += loss.item() # Calculate loss
 
         avg_loss = epoch_loss / len(dataloader)
         print(f"Epoch [{epoch+1}/{cfg_training['num_epochs']}] - Loss: {avg_loss:.6f}")
@@ -85,20 +121,27 @@ def main(config_path: Path, dataset_name: str):
     )
     print(f"Using {device} device")
 
+    # ---- Load Data ----
+    dataset_path = DATASETS / f'{dataset_name}.pt'
+    print(f'Loading dataset from: {dataset_path}')
+    dataset_dict = torch.load(dataset_path, weights_only = False)
+
     # ---- Build components ----
-    dataloader = build_dataloader(cfg_data_sets, cfg_training, dataset_name)
-    model = build_model(cfg_model, device)
-    loss_fn = nn.BCEWithLogitsLoss(weight = torch.Tensor([cfg_training["pos_weight"]])).to(device)
+    dataloader = build_dataloader(dataset_dict, cfg_training)
+    ds_info = get_dataset_parameters(dataset = dataset_dict)
+
+    model = build_model(cfg_model = cfg_model, device = device, ds_info = ds_info)
+    loss_fn = nn.BCEWithLogitsLoss(pos_weight = torch.Tensor([cfg_training["pos_weight"]])).to(device)
 
     # ---- Train ----
     train(model, loss_fn, dataloader, cfg_training, device)
-
+    """
     # ---- Save model ----
     model_dir = MODELS / (dataset_name + "_model.pt")
     print(f'Storing model as {model_dir}')
     torch.save(model.state_dict(), f = model_dir)
 
-
+    """
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", type=Path, required=True)

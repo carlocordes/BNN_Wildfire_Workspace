@@ -115,7 +115,7 @@ class Dataset_Builder():
             time_target_tensors = []
 
             # Iterate through target
-            for t in timeframe['target']:
+            for t in timeframe['target'][:1]: # Only take first of target sequence
                 filename = t + '.tif'
                 fp = target_base_path / filename
 
@@ -148,7 +148,6 @@ class Dataset_Builder():
             'static' : static_data,
             'target' : target_data,
         }
-        
 
         ## Save
         out_path = Path(self.cfg['data_sets']['path'] ) / (dataset_name + '.pt')

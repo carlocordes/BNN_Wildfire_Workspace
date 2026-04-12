@@ -150,7 +150,6 @@ class STViT(nn.Module):
             tokens = tokens.flatten(2).transpose(1,2) # Rearrange
 
             tokens = tokens + spatial_pos_embed # Add 2D spatial embedding
-
             tokens = tokens + self.static_tags[i] # Add static modularity token
 
             embedded_static_tokens.append(tokens)
@@ -207,10 +206,10 @@ class STViT(nn.Module):
 
         ## Decoder
         batch_size, _, __ = fused_tokens.shape
-        x_2d = fused_tokens.transpose(1,2).view(batch_size, self.embedding_dim, grid_h, grid_w) # Reshape to (B, emb_dim, grid_h, grid_w)
-
+        x_2d = fused_tokens.transpose(1,2).contiguous().view(
+                batch_size, self.embedding_dim, grid_h, grid_w
+        )
         pred_map = self.decoder(x_2d)
 
-        pred_map = pred_map[:, 0, :orig_h, :orig_w] # "Un-pad" to original dimensions
-
+        pred_map = pred_map[:, 0:1, :orig_h, :orig_w] # "Un-pad" to original dimensions
         return(pred_map)
