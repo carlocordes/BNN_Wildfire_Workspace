@@ -8,8 +8,8 @@ data:
   scale: 1000 # meters
 
   temporal_extent:
-    start_date: "2022-01-01"
-    end_date: "2022-01-31"
+    start_date: "2024-01-01"
+    end_date: "2024-03-31"
     day_interval: 1
 
     # New
@@ -32,9 +32,9 @@ model:
 
 training:
   learning_rate: 0.0001
-  num_epochs: 1 # 20
+  num_epochs: 40
   loss_function : "weighted_bce" # "mse"
-  pos_weight : 80
+  pos_weight : 200
   batch_size: 4
 
 

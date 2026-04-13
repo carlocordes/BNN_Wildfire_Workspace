@@ -53,20 +53,21 @@ class DataDownloader():
         # MODIS LST
         cfg_modis_path = Path(cfg_data_paths['processed']['LST'])
         download_yearly_lst(cfg_modis_path, portugal_ggrid)
-
-        # DTM
-        cfg_dtm_path = Path(cfg_data_paths["processed"]['DTM'])
-        get_one_dtm_image(cfg_dtm_path, portugal_ggrid)
         """
+        """      
+        # DTM
+        cfg_dtm_path = Path(cfg_data_paths["raw"]['elevation'])
+        get_one_dtm_image(cfg_dtm_path, portugal_ggrid)
+
         # Targets
         cfg_burn_config = cfg_data_paths['raw']['target']
         ingest_burn_records(cfg_burn_config)
-
+        """
         # MODIS NDVI (Normalized Difference Vegetation Index)
         cfg_ndvi_path = Path(cfg_data_paths['processed']['NDVI'])
-        #download_ndvi_catalogue(cfg_ndvi_path, portugal_ggrid)
+        download_ndvi_catalogue(cfg_ndvi_path, portugal_ggrid)
 
-
+        """
         # ERA-5 wind
         cfg_wind_speed_path = Path(cfg_data_paths['processed']['wind_speed'])
         cfg_wind_comp_u_path = Path(cfg_data_paths['processed']['wind_dir_u'])
@@ -75,7 +76,7 @@ class DataDownloader():
                                      speed_dir = cfg_wind_speed_path,
                                      dir_v_dir = cfg_wind_comp_v_path,
                                      dir_u_dir = cfg_wind_comp_u_path)
-
+        """
 
 
         print('Completed Download')

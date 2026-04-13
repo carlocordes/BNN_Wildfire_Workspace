@@ -90,43 +90,51 @@ class Dataset_Builder():
         sample_tensors = []
         target_tensors = []
         for timeframe in self.timeframes:
-            
-            channel_sample_tensors = []
+            try:
+                channel_sample_tensors = []
 
-            # Iterate through sample channels
-            for path in sample_base_paths:
+                # Iterate through sample channels
+                for path in sample_base_paths:
+                    time_sample_tensors = []
 
-                time_sample_tensors = []
+                    for t in timeframe['sample']:
+                        fp = path / f"{t}.tif"
 
-                # Iterate thorugh time stamps
-                for t in timeframe['sample']:
-                    filename = t + '.tif'
-                    fp = path / filename
-                    
+                        if not fp.exists():
+                            raise FileNotFoundError(f"Missing sample file: {fp}")
+
+                        with rasterio.open(fp) as src:
+                            img = torch.from_numpy(src.read(1)).float()
+                            time_sample_tensors.append(img)
+
+                    channel_sample_data = torch.stack(time_sample_tensors, dim=0)
+                    channel_sample_tensors.append(channel_sample_data)
+
+                sequence_sample_data = torch.stack(channel_sample_tensors, dim=0)
+                
+
+                # --- TARGET ---
+                time_target_tensors = []
+
+                for t in timeframe['target'][:1]:
+                    fp = target_base_path / f"{t}.tif"
+
+                    if not fp.exists():
+                        raise FileNotFoundError(f"Missing target file: {fp}")
+
                     with rasterio.open(fp) as src:
                         img = torch.from_numpy(src.read(1)).float()
-                        time_sample_tensors.append(img)
-                        
-                channel_sample_data = torch.stack(time_sample_tensors, dim = 0)
-                channel_sample_tensors.append(channel_sample_data)
+                        time_target_tensors.append(img)
 
-            sequence__sample_data = torch.stack(channel_sample_tensors, dim = 0)
-            sample_tensors.append(sequence__sample_data)
+                time_target_data = torch.stack(time_target_tensors, dim=0)
 
+                # Only append if everything succeeded
+                sample_tensors.append(sequence_sample_data)
+                target_tensors.append(time_target_data)
 
-            time_target_tensors = []
-
-            # Iterate through target
-            for t in timeframe['target'][:1]: # Only take first of target sequence
-                filename = t + '.tif'
-                fp = target_base_path / filename
-
-                with rasterio.open(fp) as src:
-                    img = torch.from_numpy(src.read(1)).float()
-                    time_target_tensors.append(img)
-
-            time_target_data = torch.stack(time_target_tensors, dim = 0)
-            target_tensors.append(time_target_data)
+            except FileNotFoundError as e:
+                print(f"Skipping timeframe due to missing data: {e}")
+                continue
 
 
         sample_data = torch.stack(sample_tensors, dim = 0)
