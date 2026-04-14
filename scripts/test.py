@@ -1,84 +1,96 @@
 """
-Visualization of the results based on a test set and and trained model
+Visualization of the results based on a test set and trained model saved as a GIF
 """
 
 # Internal
 from src.core.utils import load_config
 from src.core.systempaths import MODELS, DATASETS
 from src.models.vit.vit import STViT
+from scripts.train import WildfireDataset
+from scripts.train import build_dataloader
 
 # External
 import argparse
 from pathlib import Path
-
 import torch
 import matplotlib.pyplot as plt
-def main(modelname : str, datasetname : str, config_path : str):
+import matplotlib.animation as animation
+
+def main(model_path: Path, dataset_path: Path, config_path: Path):
     # Load config parameters
     cfg = load_config(config_path)
     cfg_model = cfg["model"]
+    cfg_training = cfg['training']
+
+    # Force batch size to 1 to ensure we iterate through samples individually
+    cfg_training['batch_size'] = 1
 
     # Load model
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = STViT(
-        num_modules=cfg_model["num_modules"],
-        patch_size=cfg_model["patch_size"],
-        embedding_dim=cfg_model["embedding_dim"]
+        num_dynamic_channels=4,
+        num_static_channels=3,
+        num_timestamps_per_sample=10,
+        patch_size=cfg_model['patch_size'],
+        embedding_dim=cfg_model['embedding_dim']
     )
-    model.load_state_dict(torch.load(MODELS / (modelname + '.pt')))
+    model.load_state_dict(torch.load(model_path, map_location=device))
+    model.to(device)
     model.eval()
 
-    #print(model)
-
     # Load dataset
-    dataset_path = DATASETS / f"{datasetname}.pt"
-    dataset = torch.load(dataset_path, weights_only=False)
+    dataset_dict = torch.load(dataset_path, weights_only=False)
+    dataloader = build_dataloader(dataset_dict, cfg_training)
 
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 6))
+    frames = []  # List to store artists for each frame
 
-    input_tensor, target_tensor = dataset[30]  # Get the first sample for testing
-
-    # Predict and visualize results
+    print("Generating frames...")
     with torch.no_grad():
-        logits = model(input_tensor.unsqueeze(0))  # Add batch dimension
-        prediction = torch.sigmoid(logits).squeeze().cpu().numpy()
-        target = target_tensor.cpu()
+        for batch_idx, batch in enumerate(dataloader):
+            # Limit frames if dataset is huge (optional)
+            if batch_idx > 50: 
+                break
 
-        # 4. Plotting
-    fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+            static_x = batch['static'].to(device)
+            dynamic_x = batch['dynamic'].to(device)
+            targets = batch['target'].to(device)
 
-    # If your data is 1-band (e.g., [1, H, W]), we squeeze the channel too
-    im1 = axes[0].imshow(target.squeeze(), cmap='viridis')
-    axes[0].set_title("Target (Ground Truth)")
-    fig.colorbar(im1, ax=axes[0])
+            logits = model(static_x, dynamic_x)
+            prediction = torch.sigmoid(logits).squeeze().cpu().numpy()
+            target = targets.squeeze().cpu().numpy()
 
-    im2 = axes[1].imshow(prediction.squeeze(), cmap='viridis')
-    axes[1].set_title("Model Prediction")
-    fig.colorbar(im2, ax=axes[1])
+            # Plot both images
+            # Note: add_axes=False and using the return of imshow to create a list of artists
+            im1 = ax1.imshow(prediction, cmap='magma', animated=True)
+            im2 = ax2.imshow(target, cmap='magma', animated=True)
+            
+            # Add text labels as artists so they update/persist correctly in the GIF
+            txt1 = ax1.text(0.5, 1.05, f'Prediction (Batch {batch_idx})', 
+                            transform=ax1.transAxes, ha="center", color="black", fontsize=12)
+            txt2 = ax2.text(0.5, 1.05, f'Target (Batch {batch_idx})', 
+                            transform=ax2.transAxes, ha="center", color="black", fontsize=12)
 
-    plt.tight_layout()
-    plt.show()
+            frames.append([im1, im2, txt1, txt2])
+
+    # Clean up axes
+    ax1.axis('off')
+    ax2.axis('off')
+
+    # Create the animation
+    # interval=1000 means 1000ms (1 second) per frame
+    ani = animation.ArtistAnimation(fig, frames, interval=1000, blit=True, repeat_delay=1000)
+
+    output_filename = "prediction_results.gif"
+    print(f"Saving GIF to {output_filename}...")
+    ani.save(output_filename, writer='pillow')
+    print("Done.")
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description = 'Visualize model predictions against a sample dataset')
-    parser.add_argument(
-        "--model",
-        type=str,
-        required=True,
-        help='Name of model in data/models/',
-    )
-    parser.add_argument(
-        "--dataset",
-        type=str,
-        required=True,
-        help="Name of testing dataset at /data/datasets"
-    )
-    parser.add_argument(
-        "--config",
-        type=str,
-        required=True,
-        help="Path to the YAML configuration file"
-    )
+    parser = argparse.ArgumentParser(description='Visualize model predictions and save to GIF')
+    parser.add_argument("--model", type=str, required=True)
+    parser.add_argument("--dataset", type=str, required=True)
+    parser.add_argument("--config", type=str, required=True)
     args = parser.parse_args()
-    main(modelname = args.model, datasetname = args.dataset, config_path = args.config)
-
-    # Example usage from /code:
-    # uv run -m scripts.test --model test_model --dataset test_dataset
+    
+    main(model_path=Path(args.model), dataset_path=Path(args.dataset), config_path=Path(args.config))

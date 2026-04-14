@@ -26,13 +26,13 @@ data:
 
 model: 
   num_modules: 2
-  embedding_dim: 4096
-  patch_size: 8 # Pixels
+  embedding_dim: 128
+  patch_size: 16 # Pixels
   dir: 'data/models'
 
 training:
   learning_rate: 0.0001
-  num_epochs: 100
+  num_epochs: 40
   loss_function : "weighted_bce" # "mse"
   pos_weight : 200
   batch_size: 4

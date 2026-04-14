@@ -8,8 +8,8 @@ data:
   scale: 1000 # meters
 
   temporal_extent:
-    start_date: "2022-01-01"
-    end_date: "2022-01-31"
+    start_date: "2020-01-01"
+    end_date: "2020-12-31"
     day_interval: 1
 
     # New
