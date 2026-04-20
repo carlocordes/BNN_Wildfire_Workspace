@@ -6,6 +6,8 @@
 * Configure configs in `configs/project.yaml`
 * Runs scripts in `scripts/`
 
+docker buildx build --platform linux/amd64 -t wildfire-model
+
 CPU-based:
 ```
 docker run wildfire-model scripts.train --config configs/project.yaml --datasetname dataset

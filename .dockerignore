@@ -1,6 +1,22 @@
-*
+# Git
+.git
+.gitignore
 
-!src/*
-!main.py
-!pyproject.toml
-!uv.lock
+# Environment
+.venv
+.python-version
+__pycache__
+
+# Python
+bucket.py
+
+# Data
+data/
+
+# Other
+experiments/
+exports/
+report/
+.DS_Store
+.vscode
+*.pyc

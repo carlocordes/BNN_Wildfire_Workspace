@@ -1,24 +1,22 @@
-# 1. Using the NVIDIA image (Note: 23.10 uses Python 3.10; for 3.11 use 24.01+)
-FROM nvcr.io/nvidia/pytorch:24.01-py3
+# Use the specified NVIDIA CUDA base image
+FROM pytorch/pytorch:2.9.1-cuda12.8-cudnn9-runtime
 
-# Set the working directory
-WORKDIR /workspace
+# Set working directory
+WORKDIR /app
 
-# 2. Install uv
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+# Install other external dependencies
+RUN pip install --no-cache-dir \
+    "boto3>=1.42.88" \
+    "python-dotenv>=1.0.0" \
+    "tensorboard>=2.20.0" \
+    "torchvision==0.24.1" \
+    "omegaconf>=2.3.0"
 
-# 3. Copy only dependency files first to leverage Docker caching
-COPY pyproject.toml uv.lock* ./
+# Copy your files
+COPY src/ ./src/
+COPY scripts/ ./scripts/
+COPY main.py .
+COPY configs/ ./configs/
 
-# 4. Install dependencies into the SYSTEM python environment
-# We use --no-install-project because we haven't copied the source code yet.
-# We use --system to avoid creating a venv inside the container.
-RUN uv pip install --system --no-cache .
-
-# 5. Copy the rest of the project
-COPY . .
-
-# 6. Set the entrypoint to run your main file
-# Using "python -m" requires main.py to be in a package or referenced correctly.
-# If you just want to run main.py directly:
-ENTRYPOINT ["python", "main.py"]
+# 
+CMD ["python", "main.py"]
