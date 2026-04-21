@@ -17,6 +17,8 @@ docker volume inspect datasets
 Create bind mound folders locally:
 ````
 mkdir -p ./mnt/datasets
+mkdir -p ./mnt/configs
+mkdir -p ./mnt/experiments
 ````
 Todo: add other folders
 
