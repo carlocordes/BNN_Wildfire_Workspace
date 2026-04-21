@@ -114,37 +114,36 @@ def train(model, loss_fn, dataloader, cfg_training, device, writer, model_save_p
 # ----------------------------
 # Main
 # ----------------------------
-def main(experiment_path: Path, config_path: Path, dataset_name: str):
+def main(config_path: Path, dataset_path: str, experiment_path: Path):
     
-    # --- NEW: Setup Logging Directory and File ---
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    run_name = f"{dataset_name[:-3]}_{timestamp}"
-    log_dir = experiment_path / run_name
-    log_dir.mkdir(parents=True, exist_ok=True)
+
+
+    # --- Setup Logging Directory and File ---
+    exp_name = experiment_path.stem
 
     # Configure Python Logging
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s [%(levelname)s] %(message)s",
         handlers=[
-            logging.FileHandler(log_dir / "training.log"), # Save to file
+            logging.FileHandler(experiment_path / "training.log"), # Save to file
             logging.StreamHandler() # Print to console
         ]
     )
     
     # Initialize TensorBoard Writer
-    writer = SummaryWriter(log_dir=str(log_dir))
+    writer = SummaryWriter(log_dir=str(experiment_path))
 
     # ---- Load config ----
     cfg = load_config(config_path)
     cfg_model = cfg["model"]
     cfg_training = cfg["training"]
+    logging.info(f'Using config file from: {config_path}')
 
     device = torch.accelerator.current_accelerator().type if torch.accelerator.is_available() else "cpu"
     logging.info(f"Using {device} device")
 
     # ---- Load Data ----
-    dataset_path = DATASETS / dataset_name
     logging.info(f"Loading dataset from: {dataset_path}")
     dataset_dict = torch.load(dataset_path, weights_only=False)
 
@@ -157,7 +156,7 @@ def main(experiment_path: Path, config_path: Path, dataset_name: str):
 
     # --- Define Save Path ---
     experiment_path.mkdir(exist_ok=True)
-    model_save_path = experiment_path / f"{run_name}_best.pt"
+    model_save_path = experiment_path / f"{exp_name}_best.pt"
 
     # ---- Train ----
     train(model, loss_fn, dataloader, cfg_training, device, writer, model_save_path)
@@ -167,12 +166,12 @@ def main(experiment_path: Path, config_path: Path, dataset_name: str):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument("--config", type=Path, required=True)
-    parser.add_argument("--datasetname", type=str, required=True)
+    parser.add_argument("--config_path", type=Path, required=True)
+    parser.add_argument("--dataset_path", type=Path, required=True)
     parser.add_argument("--experiment_path", type=Path, required=True)
 
     args = parser.parse_args()
-    main(args.experiment_path, args.config, args.datasetname)
+    main(args.experiment_path, args.config, args.dataset_path)
 
     # Example usage from /code:
     # uv run -m scripts.train --config configs/project.yaml --datasetname test.pt

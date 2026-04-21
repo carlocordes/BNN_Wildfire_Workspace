@@ -1,19 +1,42 @@
 # Code Instructions
 
 ## 1. Docker
-* Change to directory `code/`
-* Run `docker build -t wildfire-model .`
-* Configure configs in `configs/project.yaml`
-* Runs scripts in `scripts/`
 
-docker buildx build --platform linux/amd64 -t wildfire-model
-
-CPU-based:
+Create volume/mount:
 ```
-docker run wildfire-model scripts.train --config configs/project.yaml --datasetname dataset
+docker volume create datasets
 ```
 
-GPU accelerated:
+
+Inspect it:
 ```
-docker run --gpus all wildfire-model scripts.train --config configs/project.yaml --datasetname dataset
-```
+docker volume inspect datasets
+````
+
+
+Create bind mound folders locally:
+````
+mkdir -p ./mnt/datasets
+````
+Todo: add other folders
+
+
+Create .env file & fill credentials:
+````
+touch .env
+----------
+ACCESS_KEY = '...'
+SECRET_KEY = '...'
+````
+
+
+Build docker container:
+````
+docker buildx build --platform linux/amd64 -t wildfire-model .
+````
+
+
+Run it using bind mount:
+````
+docker run --platform linux/amd64 -v "$(pwd)"/mnt:/app/files wildfire-model python main.py --config project.yaml --dataset validator_2020.pt --exp_name test
+````

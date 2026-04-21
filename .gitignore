@@ -15,3 +15,6 @@ experiments/.DS_Store
 
 experiments/*/*.pt
 experiments/*
+datasets/
+files/
+mnt/
