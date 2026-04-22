@@ -17,6 +17,7 @@ COPY src/ ./src/
 COPY scripts/ ./scripts/
 COPY main.py .
 COPY configs/ ./configs/
+COPY .env ./.env
 
 
 # 

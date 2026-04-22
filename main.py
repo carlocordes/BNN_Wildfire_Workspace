@@ -43,7 +43,7 @@ def main(config : str, dataset : str, exp_name : str, upload : bool):
     
     output_dir = OUTPUT_FOLDER / 'experiments' / exp_name
     
-    
+
     try: 
         output_dir.mkdir(parents = True, exist_ok = False) # Define output dir
 
@@ -53,19 +53,21 @@ def main(config : str, dataset : str, exp_name : str, upload : bool):
                     experiment_path=output_dir)
         print(f'Results were stored to {output_dir}')
 
+        ## 4.  Upload
+        if upload:
+            client = get_s3_client()
+            s3_path = 'results'
+            print(s3_path)
+
+            upload_directory(s3_client=client,
+                            local_directory_path=output_dir,
+                            s3_prefix=s3_path)
+
     except FileExistsError:
         print('Output folder name already exists. Choose again.')
     
         
-    ## 4.  Upload
-    if upload:
-        client = get_s3_client()
-        s3_path = 'results'
-        print(s3_path)
 
-        upload_directory(s3_client=client,
-                        local_directory_path=output_dir,
-                        s3_prefix=s3_path)
 
 
 

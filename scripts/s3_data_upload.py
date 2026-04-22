@@ -38,7 +38,6 @@ def upload_directory(s3_client, local_directory_path, s3_prefix):
     dir_path = Path(local_directory_path).resolve()
     # To include the folder itself, we calculate relative to the parent
     parent_path = dir_path.parent
-    print(parent_path)
     
     print(f"--- Uploading Directory: {dir_path.name} -> s3://{BUCKET_NAME}/{s3_prefix}/{dir_path.name} ---")
 
