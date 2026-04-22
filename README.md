@@ -51,5 +51,8 @@ docker run -v "$(pwd)"/files:/app/files wildfire-model python scripts.s3_data_up
 To test out the larger training set, similarly use the following commands:
 ```
 docker run -v "$(pwd)"/files:/app/files wildfire-model python scripts/s3_data_download.py --s3_path datasets/t001/3year_0lead.pt --local_dest files/datasets
-docker run  -v "$(pwd)"/files:/app/files wildfire-model python main.py --config project.yaml --dataset 3year_0lead.pt --exp_name test --auto_upload
+
+docker run  -v "$(pwd)"/files:/app/files wildfire-model python main.py --config 3year_0lead.yaml --dataset 3year_0lead.pt --exp_name t001_small --auto_upload
+
+docker run  -v "$(pwd)"/files:/app/files wildfire-model python main.py --config 3year_0lead_large.yaml --dataset 3year_0lead.pt --exp_name t001_large --auto_upload
 ```
