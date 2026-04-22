@@ -4,7 +4,7 @@ From here training runs are controlled
 
 # Internal
 from scripts.train import main as run_training
-from src.core.s3_data_download import download_single_file as download_dataset
+#from src.core.s3_data_download import download_single_file as download_dataset
 from src.core.s3_data_upload import upload_directory as upload_results
 
 # External
@@ -30,16 +30,18 @@ def main(config : str, dataset : str, exp_name : str):
     output_dir = OUTPUT_FOLDER / 'experiments' / exp_name
     try: 
         output_dir.mkdir(parents = True, exist_ok = False) # Define output dir
+
+        # 3. Train
+        run_training(config_path=path_to_config,
+                    dataset_path=path_to_dataset,
+                    experiment_path=output_dir)
+        print(f'Results were stored to {output_dir}')
+
     except FileExistsError:
         print('Output folder name already exists. Choose again.')
 
 
-    # 3. Train
-    run_training(config_path=path_to_config,
-                 dataset_path=path_to_dataset,
-                 experiment_path=output_dir)
 
-    print(f'Results were stored to {output_dir}')
 
     ## 4.  Upload
 

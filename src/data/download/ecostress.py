@@ -3,92 +3,75 @@ from src.core.goldengrid import GoldenGrid
 
 # External
 from pathlib import Path
-import ee
 import geemap
-
-def download_ecostress_lst(date,
-                           golden_grid,
-                           lst_dir: Path):
-    """
-    Downloads ECOSTRESS Land Surface Temperature (LST) for a specific date.
-    """
-    lst_dir.mkdir(parents=True, exist_ok=True)
+import ee
+def download_one_ecostress_image(date: str, golden_grid: GoldenGrid, out_path: Path):
+    out_path.mkdir(parents=True, exist_ok=True)
 
     start = ee.Date(date)
     end = start.advance(1, "day")
-    
-    # ECOSTRESS Collection 1 LST
-    # 'LST' is the Land Surface Temperature band in Kelvin
-    daily_coll = (
-        ee.ImageCollection("NASA/ECOSTRESS/LSTE/001")
+
+    # Use Version 1, which is the stable public asset
+    collection = (
+        ee.ImageCollection("NASA/ECOSTRESS/LSTE_001")
         .filterDate(start, end)
         .filterBounds(golden_grid.aoi)
-        .select(["LST"])
     )
 
-    # Check if any granules exist for this date/location
-    count = daily_coll.size().getInfo()
+    # Check if any images exist
+    count = collection.size().getInfo()
     if count == 0:
-        print(f"No ECOSTRESS data found for {date} in the specified AOI.")
+        print(f"No ECOSTRESS image found for {date}")
         return
+    
+    # Select LST and multiply by scale factor (0.02) to get Kelvin
+    # ECOSTRESS V1 stores LST as uint16 to save space.
+    image = collection.mosaic().select('LST')
+    
+    # Scale to Kelvin: LST_real = LST_dn * 0.02
+    lst_kelvin = image.multiply(0.02).updateMask(image.gt(0))
 
-    # Since ECOSTRESS has irregular revisit times, we take the mean 
-    # of any granules that overlapped the AOI on that calendar day.
-    image = daily_coll.mean().rename('lst_kelvin')
+    print(f"Downloading ECOSTRESS LST for {date}...")
+    
+    fname = f"{date}_ecostress.tif"
+    file_path = out_path / fname
 
-    export_params = {
-        'scale': golden_grid.scale,
-        'region': golden_grid.aoi,
-        'crs': golden_grid.crs,
-        'file_per_band': False
-    }
-
-    fname = f"{date}.tif"
-
-    # Export LST
     geemap.ee_export_image(
-        image, 
-        filename=str(lst_dir / fname), 
-        **export_params
+        lst_kelvin,
+        filename=str(file_path),
+        scale=70, 
+        region=golden_grid.aoi,
+        crs=golden_grid.crs,
+        file_per_band=False
     )
 
-    print(f"Finished downloading ECOSTRESS LST for {date} ({count} scenes found)")
-
-
-def download_ecostress_catalogue(golden_grid: GoldenGrid,
-                                 lst_dir: Path):
+    
+def download_ecostress_catalogue(out_path: Path, golden_grid: GoldenGrid):
     date_strings = golden_grid.dates.strftime('%Y-%m-%d').tolist()
+
     for date in date_strings:
-        download_ecostress_lst(
+        download_one_ecostress_image(
             date=date,
             golden_grid=golden_grid,
-            lst_dir=lst_dir
+            out_path=out_path
         )
 
 if __name__ == '__main__':
-    # Initialize Earth Engine (Required if not already done)
     project_id = 'transformerwildfire'
-    ee.Initialize(project = project_id)
+    ee.Initialize(project=project_id)
 
-    # Define local golden grid
+    # Portugal AOI coordinates (as per your snippet)
     latmin, longmin = 36.812, -9.490
     latmax, longmax = 42.2724, -6.0234
 
-    start_date = '2024-08-01'
-    end_date = '2024-08-30'
-
     portugal_ggrid = GoldenGrid(
         crs='EPSG:3763',
-        scale=1000,  # ECOSTRESS native resolution is ~70m, though 1000m works for consistency
+        scale=70,  # Adjusted to match ECOSTRESS resolution
         bbox=[longmin, latmin, longmax, latmax],
-        start_date=start_date,
-        end_date=end_date,
-        day_interval=7
+        start_date='2024-01-01',
+        end_date='2024-01-05',
+        day_interval=1
     )
 
-    lst_output_path = Path('data', 'processed', 'ecostress_lst')
-    
-    download_ecostress_catalogue(
-        golden_grid=portugal_ggrid,
-        lst_dir=lst_output_path
-    )
+    eco_path = Path('data', 'processed', 'ECOSTRESS')
+    download_ecostress_catalogue(eco_path, portugal_ggrid)

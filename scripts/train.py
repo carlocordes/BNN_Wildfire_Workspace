@@ -84,11 +84,10 @@ def train(model, loss_fn, dataloader, cfg_training, device, writer, model_save_p
         epoch_loss = 0.0
 
         for batch_idx, batch in enumerate(dataloader):
-            logging.info('Entering loop')
+            logging.info(f'Processing batch index: {batch_idx}')
             static_x = batch['static'].to(device)
             dynamic_x = batch['dynamic'].to(device)
             targets = batch['target'].to(device)
-            logging.info('moving to device')
 
             preds = model(x_static=static_x, x_dynamic=dynamic_x)
             loss = loss_fn(preds, targets)
@@ -158,20 +157,10 @@ def main(config_path: Path, dataset_path: str, experiment_path: Path):
 
     # --- Define Save Path ---
     experiment_path.mkdir(exist_ok=True)
-    model_save_path = experiment_path / f"{exp_name}_best.pt"
+    model_save_path = experiment_path / f"{exp_name}_model_best.pt"
 
     # ---- Train ----
-    import traceback
-    import sys
-    try:
-        print("DEBUG: Entering training loop...", flush=True)
-        train(model, loss_fn, dataloader, cfg_training, device, writer, model_save_path)
-        print("DEBUG: Training finished successfully!", flush=True)
-    except Exception as e:
-        print("ERROR: Training loop failed!", file=sys.stderr)
-        traceback.print_exc()  # This prints the full stack trace
-        sys.exit(1) # Force a non-zero exit code so Docker knows it failed
-
+    train(model, loss_fn, dataloader, cfg_training, device, writer, model_save_path)
 
     # Close the TensorBoard writer
     writer.close()

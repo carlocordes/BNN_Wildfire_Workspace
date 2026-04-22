@@ -9,7 +9,7 @@ data:
 
   temporal_extent:
     start_date: "2020-01-01"
-    end_date: "2020-12-31"
+    end_date: "2024-12-31"
     day_interval: 1
 
     # New
@@ -32,7 +32,7 @@ model:
 
 training:
   learning_rate: 0.0001
-  num_epochs: 1 # 20
+  num_epochs: 20
   loss_function : "weighted_bce" # "mse"
   pos_weight : 80
   batch_size: 4
