@@ -40,11 +40,11 @@ docker run --platform linux/amd64 -v "$(pwd)"/mnt:/app/files wildfire-model pyth
 
 Run training (args: config file, datasetname):
 ````
-docker run --platform linux/amd64 -v "$(pwd)"/mnt:/app/files wildfire-model python main.py --config project.yaml --dataset validator_2020.pt --exp_name test
+docker run --platform linux/amd64 -v "$(pwd)"/mnt:/app/files wildfire-model python main.py --config project.yaml --dataset validator_2020.pt --exp_name test --auto_upload True
 ````
 
 
 Upload data (will upload entire results directory, name accordingly):
 ````
-docker run --platform linux/amd64 -v "$(pwd)"/mnt:/app/files wildfire-model python scripts.s3_data_upload --path files/experiments --s3_prefix results/
+docker run --platform linux/amd64 -v "$(pwd)"/mnt:/app/files wildfire-model python scripts.s3_data_upload --path files/experiments --s3_prefix results
 ````
