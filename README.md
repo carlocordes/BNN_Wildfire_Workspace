@@ -18,6 +18,11 @@ mkdir -p ./files/datasets
 mkdir -p .files/experiments
 ````
 
+Move configs to mount:
+````
+mv files/configs mnt/configs
+````
+
 
 For communicatio with Hetzner object storage and retrieval of datasets create  .env file & fill credentials:
 ````
@@ -35,7 +40,7 @@ docker buildx build --platform linux/amd64 -t wildfire-model .
 
 Download data:
 ````
-docker run -v "$(pwd)"/mnt:/app/files wildfire-model python scripts/s3_data_download.py --s3_path test_sets/small.pt --local_dest files/datasets
+docker run -v "$(pwd)"/mnt:/app/files wildfire-model python scripts/s3_data_download.py --s3_path test_sets/small.pt --local_dest mnt/datasets
 ````
 
 Run training (args: config file, datasetname):
