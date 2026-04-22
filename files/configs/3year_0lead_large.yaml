@@ -1,0 +1,61 @@
+data:
+  spatial_extent:
+    longmin: -9.4900
+    longmax: -6.0234
+    latmin: 36.812
+    latmax: 42.2724
+  crs: "EPSG:3763"
+  scale: 1000 # meters
+
+  temporal_extent:
+    start_date: "2021-01-01"
+    end_date: "2024-12-31"
+    day_interval: 1
+
+    # New
+    sequence_period : 4 # Time between respective sequences
+
+    sample_extent : 10 # Total time of sample
+    sample_period : 1 # Time between images in sample
+
+    target_extent : 4
+
+    lead_time : 0 # Time between last sample and target
+
+
+
+model: 
+  num_modules: 2
+  embedding_dim: 128
+  patch_size: 16 # Pixels
+  dir: 'data/models'
+
+training:
+  learning_rate: 0.0001
+  num_epochs: 100
+  loss_function : "weighted_bce" # "mse"
+  pos_weight : 200
+  batch_size: 4
+
+
+data_paths:
+  raw:
+    target:
+      csv: 'data/raw/burn'
+      db_name: 'burn_points.db'
+      table_name: 'burn_points'
+    DTM: 'data/raw/elevation'
+  processed:
+    LST: 'data/processed/LST'
+    NDVI: 'data/processed/NDVI'
+    wind_speed : 'data/processed/wind_speed'
+    wind_dir_u : 'data/processed/wind_dir_WE'
+    wind_dir_v : 'data/processed/wind_dir_SN'
+    slope : 'data/processed/slope'
+    aspect : 'data/processed/aspect'
+    target: 'data/processed/burn'
+
+    
+
+data_sets:
+  path: "data/datasets"

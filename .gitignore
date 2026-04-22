@@ -16,5 +16,8 @@ experiments/.DS_Store
 experiments/*/*.pt
 experiments/*
 datasets/
-files/
+files/*
+!files/configs/
+
+
 mnt/
