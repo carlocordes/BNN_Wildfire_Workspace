@@ -2,7 +2,9 @@
 
 After cloning, from the project root, set:
 
+```
 export ROOT_DIR=$(pwd)
+```
 
 ## Running using Docker
 
