@@ -5,7 +5,7 @@ From here training runs are controlled
 # Internal
 from scripts.train import main as run_training
 #from src.core.s3_data_download import download_single_file as download_dataset
-from src.core.s3_data_upload import upload_directory as upload_results
+#from src.core.s3_data_upload import upload_directory as upload_results
 
 # External
 import argparse
