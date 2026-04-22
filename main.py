@@ -44,9 +44,8 @@ def main(config : str, dataset : str, exp_name : str, upload : bool):
     output_dir = OUTPUT_FOLDER / 'experiments' / exp_name
     
 
-    try: 
+    if not any(output_dir.iterdir()): 
         output_dir.mkdir(parents = True, exist_ok = False) # Define output dir
-
         # 3. Train
         run_training(config_path=path_to_config,
                     dataset_path=path_to_dataset,
@@ -63,7 +62,7 @@ def main(config : str, dataset : str, exp_name : str, upload : bool):
                             local_directory_path=output_dir,
                             s3_prefix=s3_path)
 
-    except FileExistsError:
+    else:
         print('Output folder name already exists. Choose again.')
     
         
