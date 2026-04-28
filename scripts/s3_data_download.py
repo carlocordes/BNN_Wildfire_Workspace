@@ -15,13 +15,13 @@ def download_single_file(s3_path, local_folder):
     Downloads a single file from S3 to the specified local folder.
     """
     # Load credentials from .env
-    config = dotenv_values(".env")
+    conig = dotenv_values(".env")
 
     # Initialize the S3 client
     s3_client = boto3.client(
         "s3",
         endpoint_url=S3_ENDPOINT,
-        config=Config(signature_version=UNSIGNED) # This tells AWS "I am anonymous"
+        config=Config(signature_version=UNSIGNED) # This tells AWS "I am anonymous" TODO credentials
     )
 
     local_dir = Path(local_folder)

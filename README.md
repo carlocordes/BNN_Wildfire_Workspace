@@ -46,13 +46,26 @@ Upload data (will upload entire results directory, name accordingly):
 docker run -v "$(pwd)"/files:/app/files wildfire-model python scripts.s3_data_upload --path files/experiments --s3_prefix results
 ````
 
-## Larger Training Sets
+## t001 testing routine:
+Focus: Trying to get a sense of how system parameters **embedding dimension** and **patch size** influence computational capacity on remote machine.
 
-To test out the larger training set, similarly use the following commands:
+
+### Download data:
 ```
-docker run -v "$(pwd)"/files:/app/files wildfire-model python scripts/s3_data_download.py --s3_path datasets/t001/3year_0lead.pt --local_dest files/datasets
+docker run -v "$(pwd)"/files:/app/files:Z wildfire-model python scripts/s3_data_download.py --s3_path datasets/t001/3year_0lead.pt --local_dest files/datasets
+```
 
-docker run  -v "$(pwd)"/files:/app/files wildfire-model python main.py --config 3year_0lead.yaml --dataset 3year_0lead.pt --exp_name t001_small --auto_upload
+### 1st. Variant: 
+```
+docker run  --gpus all -v "$(pwd)"/files:/app/files:Z wildfire-model python main.py --config 3year_0lead.yaml --dataset 3year_0lead.pt --exp_name t001_small --auto_upload
+```
 
-docker run  -v "$(pwd)"/files:/app/files wildfire-model python main.py --config 3year_0lead_large.yaml --dataset 3year_0lead.pt --exp_name t001_large --auto_upload
+### 2nd. Variant: larger embedding dimension
+```
+docker run  --gpus all -v "$(pwd)"/files:/app/files:Z wildfire-model python main.py --config 3year_0lead_embed.yaml --dataset 3year_0lead.pt --exp_name t001_embedding --auto_upload
+```
+
+### 3rd. Variant: smaller patch size
+```
+docker run  --gpus all -v "$(pwd)"/files:/app/files:Z wildfire-model python main.py --config 3year_0lead_patch.yaml --dataset 3year_0lead.pt --exp_name t001_patch --auto_upload
 ```

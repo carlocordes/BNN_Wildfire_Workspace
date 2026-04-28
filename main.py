@@ -4,8 +4,6 @@ From here training runs are controlled
 
 # Internal
 from scripts.train import main as run_training
-#from src.core.s3_data_download import download_single_file as download_dataset
-#from src.core.s3_data_upload import upload_directory as upload_results
 from scripts.s3_data_upload import upload_directory, BUCKET_NAME, S3_ENDPOINT
 
 
@@ -44,7 +42,7 @@ def main(config : str, dataset : str, exp_name : str, upload : bool):
     output_dir = OUTPUT_FOLDER / 'experiments' / exp_name
     print(f'output dir:', output_dir)
 
-    if not output_dir.exists() or not any(output_dir.iterdir()):
+    if not output_dir.exists() or not any(output_dir.iterdir()): # Folder doesnt exist or isn't empty
         output_dir.mkdir(parents = True, exist_ok = False) # Define output dir
         # 3. Train
         run_training(config_path=path_to_config,

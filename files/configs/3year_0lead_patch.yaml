@@ -26,8 +26,8 @@ data:
 
 model: 
   num_modules: 2
-  embedding_dim: 128
-  patch_size: 16 # Pixels
+  embedding_dim: 256
+  patch_size: 8 # Pixels
   dir: 'data/models'
 
 training:

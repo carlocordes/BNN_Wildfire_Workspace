@@ -46,7 +46,7 @@ def upload_directory(s3_client, local_directory_path, s3_prefix):
             # relative_to(parent_path) ensures the folder name is included in the path
             relative_path = file_path.relative_to(parent_path)
             s3_key = os.path.join(s3_prefix, str(relative_path)).replace("\\", "/")
-            
+            print(f'S3 Key:', s3_key)
             try:
                 s3_client.upload_file(str(file_path), BUCKET_NAME, s3_key)
                 print(f"  Uploaded: {relative_path}")
