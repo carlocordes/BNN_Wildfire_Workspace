@@ -1,8 +1,8 @@
-#import "../../template.typ": *
+#import "../template.typ": *
 
 = Introduction <chap:intro>
 
-This is a complete template for the MSc Geomatics thesis. 
+This is a complete template for the MSc Geomatics thesis.
 It contains all the parts that are required and is structured in such a way that most/all supervisors expect.
 Observe that the MSc Geomatics at TU Delft has no formal requirements, how the document looks like (fonts, margins, headers, etc) is entirely up to you. 
 
@@ -32,7 +32,7 @@ For a figure, you can also just use @fig:cat, but I guess you can qualify it wit
 @fig:sometriangles is a simple figure in PNG format, notice the use of `placement: auto` to put the figure at the best place possible (top or bottom, Typst decides for you).
 
 #figure(
-  image("../../figs/sometriangles.png", width:50%),
+  image("../figs/sometriangles.png", width:50%),
   placement: auto, //-- otherwise figures gets placed where it's called
   caption: flex-caption( [1 nice figure.], [Two nice figure.]),
 ) <fig:sometriangles>
@@ -43,15 +43,15 @@ As shown in @fig:cat, it is possible to have two figures (or more) side by side.
 You can also refer to a _subfigure_: see @fig:cat:b.
 #subpar-grid(
   figure(
-    image("../../figs/tricat.pdf", page: 1),
+    image("../figs/tricat.pdf", page: 1),
     caption: [],
   ), <fig:cat:a>,
   figure(
-    image("../../figs/tricat.pdf", page: 2), 
+    image("../figs/tricat.pdf", page: 2), 
     caption: [],
   ), <fig:cat:b>,
   figure(
-    image("../../figs/tricat.pdf", page: 3), 
+    image("../figs/tricat.pdf", page: 3), 
     caption: [],
   ), <fig:cat:c>,
   columns: (1fr, 1fr, 1fr),
@@ -69,9 +69,7 @@ You can also refer to a _subfigure_: see @fig:cat:b.
 
 We know from #citet(<Descartes37>) that this can be done, and others have done that too @Descartes37.
 
-And #citet(<Delaunay34>) did VoroCrust.
-
-// We know from #cite(<Hawker22>, form: "prose") that this can done, and others have done that too #cite(<Esch22>, form: "year").
+And #citet(<vanKreveld96>) did write nice papers, and others too @Campen12.
 
 // All the same
 + @Voronoi08 \
@@ -79,8 +77,8 @@ And #citet(<Delaunay34>) did VoroCrust.
 + #citep(<Voronoi08>) \
 + #cite(label("Voronoi08"))
 
-To cite several papers for one sentence, just use several commands #citep(<Delaunay34>)#citep(<Aurenhammer12>).
-And #citet(<Delaunay34>, supplement: "p. 77") to specify a specific page.
+To cite several papers for one sentence, just chain commands together #citep(<Delaunay34>)#citep(<Aurenhammer12>).
+And #citet(<Delaunay34>, supplement: "p. 77") to specify a specific page, and #cite(<Aurenhammer12>, form: "year") just to add the year.
 
 When adding references to your BibTeX file, it is good pratice to add the DOI of the paper.
 For example, for a paper:
@@ -94,8 +92,9 @@ For example, for a paper:
 }
 ```
 
-Notice that if you use the field `doi` you shouldn't append `http://doi.org/`.
+Notice that if you use the field `doi` you shouldn't append `http://doi.org/` (the full DOI being http://doi.org/10.1142/8685).
 If you do this then you'll have clickable DOIs in your list of references. 
+
 
 == Footnotes 
 
@@ -140,7 +139,7 @@ An example of a simple table is in @tab:example1.
 
 ❤️ You can even read directly from a CSV file this way:
 
-#let data = csv("../../data/smth.csv")
+#let data = csv("../data/smth.csv")
 #table(
   columns: 3,
   ..data.flatten(),
@@ -152,7 +151,7 @@ The best way is to use #link("http://matplotlib.org")[matplotlib], or its more b
 With these, you can use Python to generate nice plots, such as that in @fig:myplot.
 
 #figure(
-  image("../../plots/myplot.svg", width:70%),
+  image("../plots/myplot.svg", width:70%),
   placement: auto, 
   caption: [A super plot.],
 ) <fig:myplot>

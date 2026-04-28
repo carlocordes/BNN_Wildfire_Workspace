@@ -86,9 +86,8 @@
 #counter(page).update(1)
 #set heading(numbering: "1.")
 
-#include "chapters/introduction/introduction.typ"
-#include "chapters/relatedwork/relatedwork.typ"
-#include "chapters/methodology/methodology.typ"
+#include "chapters/introduction.typ"
+#include "chapters/relatedwork.typ"
 
 //-- back-matter
 // must take page breaks into account, may need to be offset by +1 or -1
@@ -104,4 +103,4 @@
 #include "appendices/someumldia.typ"
 
 //-- references
-#bibliography("refs.bib", style: "apa")
+#bibliography("./refs/refs.bib", style: "./refs/apa-annotated-bibliography_modified-HL.csl")

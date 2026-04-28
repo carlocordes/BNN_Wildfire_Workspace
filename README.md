@@ -57,15 +57,15 @@ docker run -v "$(pwd)"/files:/app/files:Z wildfire-model python scripts/s3_data_
 
 ### 1st. Variant: 
 ```
-docker run  --gpus all -v "$(pwd)"/files:/app/files:Z wildfire-model python main.py --config 3year_0lead.yaml --dataset 3year_0lead.pt --exp_name t001_small --auto_upload
+docker run  --device nvidia.com/gpu=all -v "$(pwd)"/files:/app/files:Z wildfire-model python main.py --config 3year_0lead.yaml --dataset 3year_0lead.pt --exp_name t001_small --auto_upload
 ```
 
 ### 2nd. Variant: larger embedding dimension
 ```
-docker run  --gpus all -v "$(pwd)"/files:/app/files:Z wildfire-model python main.py --config 3year_0lead_embed.yaml --dataset 3year_0lead.pt --exp_name t001_embedding --auto_upload
+docker run  --device nvidia.com/gpu=all -v "$(pwd)"/files:/app/files:Z wildfire-model python main.py --config 3year_0lead_embed.yaml --dataset 3year_0lead.pt --exp_name t001_embedding --auto_upload
 ```
 
 ### 3rd. Variant: smaller patch size
 ```
-docker run  --gpus all -v "$(pwd)"/files:/app/files:Z wildfire-model python main.py --config 3year_0lead_patch.yaml --dataset 3year_0lead.pt --exp_name t001_patch --auto_upload
+docker run  --device nvidia.com/gpu=all -v "$(pwd)"/files:/app/files:Z wildfire-model python main.py --config 3year_0lead_patch.yaml --dataset 3year_0lead.pt --exp_name t001_patch --auto_upload
 ```
