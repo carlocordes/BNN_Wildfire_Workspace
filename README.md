@@ -36,7 +36,7 @@ docker run -v "$(pwd)"/files:/app/files wildfire-model python scripts/s3_data_do
 
 Run training with --auto_upload flag (args: config file, datasetname):
 ````
-docker run  -v "$(pwd)"/files:/app/files wildfire-model python main.py --config project.yaml --dataset validator_2020.pt --exp_name test --auto_upload
+docker run  -v "$(pwd)"/files:/app/files wildfire-model python main.py --config project.yaml --dataset small.pt --exp_name test --auto_upload
 ````
 
 ## Manual Upload

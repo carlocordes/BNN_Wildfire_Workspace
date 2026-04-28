@@ -42,9 +42,9 @@ def main(config : str, dataset : str, exp_name : str, upload : bool):
     path_to_dataset = OUTPUT_FOLDER / 'datasets' / dataset
     
     output_dir = OUTPUT_FOLDER / 'experiments' / exp_name
-    
+    print(f'output dir:', output_dir)
 
-    if not any(output_dir.iterdir()): 
+    if not output_dir.exists() or not any(output_dir.iterdir()):
         output_dir.mkdir(parents = True, exist_ok = False) # Define output dir
         # 3. Train
         run_training(config_path=path_to_config,
