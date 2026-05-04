@@ -29,8 +29,8 @@
 |---------|------------|---------------------|-------------------------|------------------|
 | 1.1 System Overview |  | End-to-end pipeline, config system |  | Tech stack/flow diagram, python dependencies |
 | 1.2 Data Acquisition & Processing |  |  |  |  |
-|  | Earth Engine & Harmonization |  |  |  |
-|  | Feature Engineering | Derived data, e.g. wind split & DTM |  |  |
+|  | Earth Engine & Harmonization|  |  |  |
+|  | Feature Engineering |  |  |  |
 |  | Ground Truth |  |  |  |
 | 1.3 Dataset Construction |  | Static/dynamic data, WildfireDataset class,  |  | Sequence/target chart |
 | 1.4 Model Architecture |  |  |  |  |
