@@ -109,7 +109,7 @@ class STViT(nn.Module):
         pos_embed = torch.cat([torch.sin(out_y), torch.cos(out_y), torch.sin(out_x), torch.cos(out_x)], dim=-1)
         return pos_embed.flatten(0, 1).unsqueeze(0)
 
-    def forward(self, x_static, x_dynamic):
+    def forward(self, x_static, x_dynamic, return_tokens = False):
 
         ## Pad input to be divisible by patch size via reflect method
         # Pad static (4D): (B, C, H, W) -> (B, C, H+pad_h, W+pad_w)
@@ -212,4 +212,7 @@ class STViT(nn.Module):
         pred_map = self.decoder(x_2d)
 
         pred_map = pred_map[:, 0:1, :orig_h, :orig_w] # "Un-pad" to original dimensions
+        
+        if return_tokens:
+            return pred_map, fused_tokens
         return(pred_map)
