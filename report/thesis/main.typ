@@ -26,8 +26,8 @@
 )
 #counter(page).update(1)
 
-#include "front/abstract.typ"
-#include "front/acknowledgement.typ"
+//#include "front/abstract.typ"
+//#include "front/acknowledgement.typ"
 
 #[
   #show outline.entry.where(
@@ -38,7 +38,7 @@
   }
   #outline(depth: 2, indent: auto)
 ]
-
+/*
 #{
   show outline: it => {
     [#in-outline.update(true)]
@@ -57,7 +57,7 @@
   title: [List of algorithms],
   target: figure.where(kind: "algorithm"),
 )
-
+*/
 #outline(title: "TODOs", target: figure.where(kind: "todo")) <all-todos>
 
 // page counter anchor
@@ -98,9 +98,9 @@
 #let figure-numbering = super => numbering("A.1", counter(heading).get().first(), super)
 #show figure.where(kind: image): set figure(numbering: figure-numbering)
 
-#include "appendices/useofai.typ"
-#include "appendices/reproducibility.typ"
-#include "appendices/someumldia.typ"
+//#include "appendices/useofai.typ"
+//#include "appendices/reproducibility.typ"
+//#include "appendices/someumldia.typ"
 
 //-- references
 #bibliography("./refs/refs.bib", style: "./refs/apa-annotated-bibliography_modified-HL.csl")
