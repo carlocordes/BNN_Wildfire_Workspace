@@ -88,6 +88,7 @@
 
 #include "chapters/introduction.typ"
 #include "chapters/relatedwork.typ"
+#include "chapters/methodology.typ"
 
 //-- back-matter
 // must take page breaks into account, may need to be offset by +1 or -1
