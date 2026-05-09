@@ -37,9 +37,16 @@ data:
 == Dataset Construction
 === Timeframe Configuration
 === Torch Datasets & Tensors
+More method writing
 
 
 == Model Architecture <sec:model>
+In order to motivate the structure of the here applied transformer, this section walks through the sequential steps incoming data takes through the model. This represents one forward propagation. The later showcased training regiment makes this forward pass once for every batch in the training data, thus cycling through it an abundance of times.
+
+#todo(stroke : orange)[Complete model architecture diagram and reference]
+
+#todo(stroke : green)[Define key terms (maybe somewhere else)]
+
 === Encoding <subsec:encoding>
 The initial objective of the transfomrer model revolves around turning input data into tokens via patch embedding. The patch size, a model hyperparameter, defines the pixel extent of square patches every input image is divided into. As we handle only single-band data we treat the image as a grid of height and width: $h times w$. 
 
@@ -91,7 +98,7 @@ Having obtained a set of embeddings for every image in the model input, we now i
 
 In order to create such a relationship we come up with an individual positional encoding for every patch that is added onto each embedding:
 
-$ e_"token" ' = e_"token" + e_"pos"  in RR ^ (d_"embed") $
+$ arrow(e)_"token" ' = arrow(e)_"token" + arrow(e)_"pos"  in RR ^ (d_"embed") $
 
 To create a positional embedding that retains similarity between proximal patches, we use sinusoidal positional embedding. By imposing sine and cosine waves of varying frequencies over the patch grid, we are able to establish a unique encoding for every patch that has distinct relationships to other patches, depending on their euclidean distance. This is done by first defining a set of frequencies with  $d = d_"embed" / 4$:
 
@@ -99,7 +106,7 @@ $ omega_i = 1 / 10000 ^ (i / d) $
 
 The nature of the integer $4$ is that in order to create the most unique positional embeddings, we split the added partial embeddings into both height and width and also sine and cosine categories. We scale the frequencies with 10000 in order to fit multiple periods into the image. Interpreting height and width as coordinates we can thus describe the positional encoding of a patch as the vertical concatentation of these frequencies:
 
-$ e_"pos" = vec(sin(h omega), cos(h omega), sin(w omega), cos(w omega)) in RR ^ (d_"embed") $
+$ arrow(e)_"pos" = vec(sin(h omega), cos(h omega), sin(w omega), cos(w omega)) in RR ^ (d_"embed") $
 
 @fig:embedding_dims shows samples of the modes of the positional embeddings for every patch in the input image, in this case $80 times 40$. These include waves that propagate in direction of height and width. For every patch we add the embedding values of all dimensions. 
 
@@ -117,19 +124,86 @@ Given the multitude of modes we can form very individualised encodings for all p
   caption: [Cosine similarity of patches relative to central anchor-patch at varying embedding dimension],
 ) <fig:embedding_simil>
 
-#todo(stroke: red)[Static tags]
-
 Having embedded all tokens of different modalities into embedding space, we additionally give each token a modality tag. A tag is unique per module and is a learnable parameter with the objective to give the attention heads a clearer idea of where tokens came from. Throughout the learning process the transformer will be able to differentiate between different modules as the tag injects a numeric meaning to all tokens. The complete spatial embedding process, with the additional static tag $arrow(s)_m$ for each module $m$ thus takes form:
 $ arrow(z)^(m)_n = arrow(e)^("  m")_"token, n" + arrow(e)_"pos" + arrow(s)_m $ 
 
+
 === Attention Layers
+Having obtained a set of tokens from the batch of the dataset, the next step dictates how these tokens communicate information between each other and consequently update their embeddings. The core priniples demanded from this step are:
 
+- Module isolation
+- Shallow self-attention
 
+The idea of keeping the modules in isolation at first is to give later cross-attention process a richer input. By allowing e.g. a patch embedding stemming from the DTM to understand not only itself but its surrounding patches, we save computational cost for later steps as this module delivers an already pre-trained version of every patch. Model weights in this step are only shared between and trained by embeddings of the same module. The idea of keeping this initial self-attention shallow is motivated by the goal of the model. The objective is not for every set of module tokens to best understand its surroundings, but much rather get an initial idea of it, to carry it further into the next model step.
+
+#todo(stroke: green)[Specify number of heads, number of blocks]
+#todo(stroke: orange)[Diagram of attention heads]
 
 === Fusion Layers
+With a set of pre-attended tokens we now move onto the fusion step, which represents the first time tokens from different modules are exposed to each other. The traditional implementation with this goal in mind is to use cross-attention heads in which the query vector belongs to the first, and both key and value vector belonging to the other. This step then fuses patch information accross modules. 
+
+The methodology chosen here for cross-attending such data is implicit. Rather than taking every token on its own and letting it communicate to all other tokens of all datasets we simplify the process, as the computational complecity of such a module would scale exponentially with the amount of patches and the amount of datasets as input. The objective here is to rule out potentially unnecessary attention computations e.g. two patches describing vegetation stress and wind that lie far apart in the area of interest. To motivate the following simplification, a short revisit to the core idea of the original objective of cross-attention for translation learning tasks. A sentence, in which every word forms a token, will likely be rearranged in the translation to another language (see @fig:translation). In the english language we expect #emph[park] to have a large influence on #emph[bench] and likewise in its french counter part. When cross-attending these tokens of the two datasets, we expect no consistency in the arrangements in the positions of directly translatable words. Therefore, a global cross-attention process is mandatory to ensure correct translation.
+
+#figure(
+  rect[#strong[EN:] The man quietly sat on a park bank \
+      #strong[FR:] L'homme était tranquillement assis sur la berge du parc.],
+  caption: "Example of token order of two cross-attending datasets"
+) <fig:translation>
+
+This effect is however not consistent in the vision transformer. When dealing with datasets that embody the same area of interest and in the same order, we can confidently expect token 1 to describe the same entity in both images. This very effect allows for an elegant simplification of cross-attention with which we can greatly constrain cross-attending tokens and computational cost. 
+
+The fusion layer concatenates tokens for every patch and stacks their values into one new embedding vector. The model thus holds all information later used for prediction in only one set of patch tokens. With this set it then performs self-attention or since multiple modalities are used a quasi-cross-attention block. Since every token in one module cross-attends to every other token in another module very similarly, this step simply carries out this operation together as we expect these token pairs to weight on each other quite similarly. This part of the encoder carries the weight of deep self-attenion with n blocks of x attention heads each. The product of these attended tokens then represent the final embeddings of each patch in the vector space that characterizes the prediction of ground truth. Tokens with similar physical properties are represented by similar locations in this embedding space.
+#todo(stroke : red)[Fill head & block values]
+#todo(stroke: red)[Ammend fusion part, explain convolution]
+
 === Decoder Layer
+The final task of the vision transformer is to take the embedded vector representations in the embedding space and project them back into a form which represents our ground truth: a 2D image. To clarify, the tensor at this point carries an embedding for each patch, which needs to be projected back from embedding space into 2D:
+
+$ T_"encoder" in RR ^(B times n_"token" times d_"embed") $
+
+It is of course possible to make predictions for every patch. This is however not just an oversimplification but does provide the opportunity to predict for as many samples as possible. @fig:decoder shows the complete structure of the decoder process that projects back to image space:
+
+#figure(
+  table(
+    columns: 3,
+    align: horizon,
+    inset: 10pt,
+    stroke: (bottom: 1pt + black),
+    [*Step*], [*Tensor Size $macron(T)$*], [*Description*],
+    [ Input ], [ $B times n_"token" times d_"embed"$ ], [ Output of attention blocks ],
+    [ Reshape 1], [ $B times d_"embed" times h_"pad" times w_"pad"$ ], [ Reshape back to 4D feature map ],
+    [ Convolution 1 + BatchNorm / ReLU], [ $B times d_"embed" / 2 times h_"pad" times w_"pad"$ ], [ $3 times 3$ kernel with padding, reduce channel depth],
+    [ Upsample 1 ], [ $B times d_"embed" / 2 times 4 h_"pad" times 4 w_"pad"$ ], [ $4 times$ scale, bilinear interpolation ],
+    [ Convolution 2 + BatchNorm / RELU], [ $B times d_"embed" / 4 times 4 h_"pad" times 4 w_"pad"$ ], [ $3 times 3$ kernel with padding, reduce channel depth ],
+    [ Upsample 2 ], [ $B times d_"embed" / 4 times 16 h_"pad" times 16 w_"pad"$ ], [ $4 times$ scale, bilinear interpolation ],
+    [ Convolution 3], [ $B times 1 times 16 h_"pad" times 16 w_"pad"$ ], [ $1 times 1$ kernel, pixel-wise classifier],
+    [ Slice], [ $B times 1 times h times w$ ], [ Un-pad operation to original input size ],
+  ),
+  caption : "Step-wise decoder mechanism & prediction head"
+) <fig:decoder>
+
 
 == Training Routine
+
+
 === Model Parameters
 === Loss Function
+
+After having made a succesfull forward pass, we evaluate the accuracy of the models by comparing its prediction to the ground truth as defined by a loss function. The main specification the loss function has to adhere to in this problem set-up is the type of target domain in its binary form (fire / no fire). The other is the lopsidedness of our target categories. Due to the very rare nature of fire events, most of the target data describes no-fire, or to the model: zeros. We therefore choose a categorical loss function that in addition to being sensitive to class imbalances is scaleable by a custom weight, the Binary Cross-Entropy (WBCE) loss function. It depends on the model prediction $p_i$, the ground truth $y_i$ and positive weight $w$. The loss function sums $N$ comparisons in total, one for every pixel in the ground truth.
+
+$ L =  -1 / N sum_(i = 1)^N w y_i log(p_i) + (1-y_i)log(1-p_i) $ <eq:wbce>
+
+This setup allows for customizable weighing of output cases. As a concrete example, @eq:wbce allows us to treat categorical errors made by the model differently. The penalty given by the loss function should be much higher for an incorrect prediction of high-likelihood of fire than a missed prediction of a fire as the no-fire category dominates in overall frequency. This also prevents the model from simply predicting zero to all images, in which case it would still be correct in the majority of cases, however wildly missing the point of its training exercise.
+
+@fig:loss_3d shows the loss plane for all possible prediction/ground-truth combinations and a class imbalance $w=5$. This illustratess a zero loss for all correct predictions along with the two extreme parts of the domains in which the model has made an error. By predicting less than the actual ground truth the model is conistently penalized harsher than vice-versa.
+
+Parameter choice of the positive weight $w$ is determined by the entirety of the training dataset before training and is then passed as an input parameter. In essence, all ground truth images are summed to yield a balance of categories.
+
+#figure(
+  image("../figs/wbce_loss.svg", width:120%),
+  placement: auto, 
+  caption: [Loss surface of Weighted Binary Cross Entropy (WBCE) loss function],
+) <fig:loss_3d>
+
 === Back Propagation & Optimizer
+
