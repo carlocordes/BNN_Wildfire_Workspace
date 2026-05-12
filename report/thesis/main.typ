@@ -86,7 +86,8 @@
 #counter(page).update(1)
 #set heading(numbering: "1.")
 
-//#include "chapters/relatedwork.typ"
+//#include "chapters/introduction.typ"
+#include "chapters/relatedwork.typ"
 #include "chapters/methodology.typ"
 
 //-- back-matter

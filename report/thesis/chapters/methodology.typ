@@ -2,6 +2,9 @@
 #set heading(numbering: "1.")
 
 = Methodology <chap:methodology>
+#todo(stroke : green)[Define key terms (maybe somewhere else)]
+
+#todo(stroke : green)[Concept: apply idea of embeddings to "climate vector space"]
 
 == Workflow & System Overview <sec:method>
 #figure(
@@ -27,17 +30,49 @@ data:
 )
 
 == Data <sec:data>
+- *Module: *
 
 
 == Data Acquisition & Processing
+
+
 === Earth Engine & Harmonization
+
+
 === Feature Engineering
+
+
 === Ground Truth
 
+
+
+
 == Dataset Construction
-=== Timeframe Configuration
+=== Timeframe Configuration <subsec:time_config>
+As part of the research objectives are to investigate the temporal scopes of both data and predictions, it is important to be clear about terminology. The datasets are created according to configurations. These can be adjusted depending on the desired test case. As we handle temporally dynamic datasets we need to define how timesteps of samples are represented in the dataset. To ensure consistency in naming these, we here declare a series of term definitions relevant for this step:
+
+
+- *Sample:* Input data the model sees to form predictions; describes the set of timestamps for one forward pass
+- *Target:* The collection of images, that is variable length, that is used for testing the model predictions
+- *Sequence:* A pair of a sample and target
+- *Dataset:* A collection of sequences
+- *Sequence Period:* Separation between individual unique sequences
+- *Extent:* Used both sample and target, defines their respective variable length
+- *Lead Time:* The time between the last seen timestamp in the sample and first one in the target. In other words: the amount of time the model predicts into the future
+
+#figure(
+  image("../figs/temporal_configs.png", width:100%),
+  placement: auto, 
+  caption : [Definions of temporal scope in project datasets]
+) <fig:temporal_scope>
+#todo(stroke : orange)[Update figure of timestamp configurations]
+
+@fig:temporal_scope illustrates the terms defined above. It shows two consecutive sequences as well as their their respective samples and targets. The configuration file governs the total time of interest. The dataset builder then generates a set of timestamps as governed by the rest of the temporal configurations and iterates through the respective file for every module. Sequences with missing images are skipped entirely to ensure consistency. 
+
+
 === Torch Datasets & Tensors
-More method writing
+Moving data from images into the pytorch framework is done using its fundamental data structure, the *Tensor*. Like in the traditional mathematical sense this is an array of arbitrary dimension containing elements of a single data type, but has a few computation-driven features. Most importantly, it is optimized to be handled by GPU. Tensors are directly assosciated with the model instance (elaborated in @subsec:backprop) and have an attribute that defines whether they are adjustable model parameters. This concept is specifically designed for those tensors containing model weights. PyTorch can track the operations imposed on a tensor, which makes later backpropagation to these easier #citep(<pytorch_tensor>). The sequences described in @subsec:time_config are appended into such a tensor structures and then saved as portable datasets to be made accessible on larger compute resources.
+
 
 
 == Model Architecture <sec:model>
@@ -45,10 +80,10 @@ In order to motivate the structure of the here applied transformer, this section
 
 #todo(stroke : orange)[Complete model architecture diagram and reference]
 
-#todo(stroke : green)[Define key terms (maybe somewhere else)]
+
 
 === Encoding <subsec:encoding>
-The initial objective of the transfomrer model revolves around turning input data into tokens via patch embedding. The patch size, a model hyperparameter, defines the pixel extent of square patches every input image is divided into. As we handle only single-band data we treat the image as a grid of height and width: $h times w$. 
+The initial objective of the transfomer model revolves around turning input data into tokens via patch embedding. The patch size, a model hyperparameter, defines the pixel extent of square patches every input image is divided into. As we handle only single-band data we treat the image as a grid of height and width: $h times w$. 
 
 // Reflective padding (h_pad x w_pad)
 This is realized via a 2D convolution with stride equal to the desired patch size. This ensures zero overlap between neighboring patches. An important element to consider is that both height and width of images need not be divisible without rest by the patch size. To counter this we use reflective padding, a process which mirrors input images around their edges to fill in pixel data until the next complete patch. Extending height and width to to $h_(p a d)$ & $w_(p a d)$ allows for perfect image division into patches. As the model input consists of multiple modules $M$ for consecutive time steps $t$ that are processed in batches $B$ of variable sizes the input tensor has dimensionality:
@@ -71,10 +106,10 @@ $ e = w P_(f l a t) +  b $ <eq:2dkernel>
 where
 
 $ w  = mat(
-          w_(1, 1), w_(1, 2), ..., w_(d_(p a t c h, 1));
-          w_(2, 1), w_(2, 1), ..., w_(d_(p a t c h, 2));
-          dots.v, dots.v, dots.down, dots.v;
-          w_(d_(e m b e d, 1)), w_(d_(e m b e d, 2)), ..., w_(d_(p a t c h), d_(e m b e d))
+    w_(1, 1), w_(1, 2), ..., w_(d_(p a t c h, 1));
+    w_(2, 1), w_(2, 1), ..., w_(d_(p a t c h, 2));
+    dots.v, dots.v, dots.down, dots.v;
+    w_(d_(e m b e d, 1)), w_(d_(e m b e d, 2)), ..., w_(d_(p a t c h), d_(e m b e d))
   )  in RR ^ (128 times 256) $
 
 //Dynamic to feature amount -> config defines no. of static/dynamic channels
@@ -85,7 +120,7 @@ The model architecture demands a separate routing of static and dynamic data cha
 
 $ RR ^ (t times d_(p a t c h) times d_(p a t c h)) ->  RR ^ (d_(e m b e d)) $ <eq:3d_conv>
 
-The convolutional operation is analogous to @eq:2dkernel for a static embedding with a kernal of dimension:
+The convolutional operation is analogous to @eq:2dkernel for a static embedding with a kernel of dimension:
 
 $ w in RR ^ (d_(e m b e d) times t times P ^ 2) $
 
@@ -142,15 +177,15 @@ The idea of keeping the modules in isolation at first is to give later cross-att
 === Fusion Layers
 With a set of pre-attended tokens we now move onto the fusion step, which represents the first time tokens from different modules are exposed to each other. The traditional implementation with this goal in mind is to use cross-attention heads in which the query vector belongs to the first, and both key and value vector belonging to the other. This step then fuses patch information accross modules. 
 
-The methodology chosen here for cross-attending such data is implicit. Rather than taking every token on its own and letting it communicate to all other tokens of all datasets we simplify the process, as the computational complecity of such a module would scale exponentially with the amount of patches and the amount of datasets as input. The objective here is to rule out potentially unnecessary attention computations e.g. two patches describing vegetation stress and wind that lie far apart in the area of interest. To motivate the following simplification, a short revisit to the core idea of the original objective of cross-attention for translation learning tasks. A sentence, in which every word forms a token, will likely be rearranged in the translation to another language (see @fig:translation). In the english language we expect #emph[park] to have a large influence on #emph[bench] and likewise in its french counter part. When cross-attending these tokens of the two datasets, we expect no consistency in the arrangements in the positions of directly translatable words. Therefore, a global cross-attention process is mandatory to ensure correct translation.
+The methodology chosen here for cross-attending such data is implicit. Rather than taking every token on its own and letting it communicate to all other tokens of all datasets we simplify the process, as the computational complecity of such a module would scale exponentially with the amount of patches and the amount of datasets as input. The objective here is to rule out potentially unnecessary attention computations e.g. two patches describing vegetation stress and wind that lie far apart in the area of interest. To motivate the following simplification, a short revisit to the core idea of the original objective of cross-attention for translation learning tasks. A sentence, in which every word forms a token, will likely be rearranged in the translation to another language (see @fig:translation). In the english language we expect the embedding of #emph[red] to have a large influence that of #emph[fire] and likewise in its french counter part. When cross-attending these tokens of the two datasets, we expect no consistency in the arrangements in the positions of directly translatable words. Therefore, a cross-attention mechanism considering all tokens is mandatory.
 
 #figure(
-  rect[#strong[EN:] The man quietly sat on a park bank \
-      #strong[FR:] L'homme était tranquillement assis sur la berge du parc.],
+  rect[#strong[EN:] The red fire spreads accross the land \
+      #strong[FR:] Le feu rouge se propage à travers le pays],
   caption: "Example of token order of two cross-attending datasets"
 ) <fig:translation>
 
-This effect is however not consistent in the vision transformer. When dealing with datasets that embody the same area of interest and in the same order, we can confidently expect token 1 to describe the same entity in both images. This very effect allows for an elegant simplification of cross-attention with which we can greatly constrain cross-attending tokens and computational cost. 
+This concept is however not consistent in the vision transformer. When dealing with datasets that embody the same area of interest and in the same order, we can confidently expect token 1 to describe the same entity in both images. This very effect allows for an elegant simplification of cross-attention with which we can greatly constrain cross-attending tokens and computational cost. 
 
 The fusion layer concatenates tokens for every patch and stacks their values into one new embedding vector. The model thus holds all information later used for prediction in only one set of patch tokens. With this set it then performs self-attention or since multiple modalities are used a quasi-cross-attention block. Since every token in one module cross-attends to every other token in another module very similarly, this step simply carries out this operation together as we expect these token pairs to weight on each other quite similarly. This part of the encoder carries the weight of deep self-attenion with n blocks of x attention heads each. The product of these attended tokens then represent the final embeddings of each patch in the vector space that characterizes the prediction of ground truth. Tokens with similar physical properties are represented by similar locations in this embedding space.
 #todo(stroke : red)[Fill head & block values]
@@ -182,14 +217,69 @@ It is of course possible to make predictions for every patch. This is however no
   caption : "Step-wise decoder mechanism & prediction head"
 ) <fig:decoder>
 
+=== Model Parameters
+
+#figure(
+  table(
+    columns : 2,
+
+    stroke: (x, y) => if y == 0 {
+    (bottom: 0.7pt + black)
+    },
+
+    align: (x, y) => (
+      if x > 0 { center }
+      else { left }
+    ),
+
+    table.header(
+      [ *Module Name* ], [ *Parameter Count* ]
+    ),
+    [static_embeds], [98,688],
+    [dynamic_embeds], [1,311,232],
+    [static_encoders], [1,779,072] ,
+    [dynamic_encoders], [2,372,096],
+    [static_mixer], [49,280],
+    [dynamic_mixer], [65,664],
+    [module_fusion], [66,048],
+    [decoder], [92,481],
+    [Standalone Parameters], [896],
+    table.hline(),
+    [TOTAL], [5,835,457],
+  ),
+  caption : "Model Parameters per class
+   "
+)
+#todo(stroke : green)[Update with final params]
 
 == Training Routine
+#figure(
+  kind: "algorithm",
+  supplement: [Algorithm],
+  caption: [Training routine],
+  pseudocode-list[
+    + *Input:* Load dataset, initialize dataloader, move to GPU
+    + Initialize loss function, optimizer, model from config
+    + $"epoch_loss" = 0$
+    + *for* eopoch in num_epochs:
+      + *for* batch in dataloader:
+        + *Predict* for batches given static & dynamic inputs
+        + Compute *losses* based on WBCE, predictions & *ground truth*
+        + Set *optimizer* gradients to zero
+        + Backward pass
+        + Update *weights*
+        + $"epoch_loss" += "loss"$
+      + if epoch_loss <= best_loss:
+        + Save *model*
+  ]
+)
+#todo(stroke : green)[Update with validation workflow]
 
 
-=== Model Parameters
+
 === Loss Function
 
-After having made a succesfull forward pass, we evaluate the accuracy of the models by comparing its prediction to the ground truth as defined by a loss function. The main specification the loss function has to adhere to in this problem set-up is the type of target domain in its binary form (fire / no fire). The other is the lopsidedness of our target categories. Due to the very rare nature of fire events, most of the target data describes no-fire, or to the model: zeros. We therefore choose a categorical loss function that in addition to being sensitive to class imbalances is scaleable by a custom weight, the Binary Cross-Entropy (WBCE) loss function. It depends on the model prediction $p_i$, the ground truth $y_i$ and positive weight $w$. The loss function sums $N$ comparisons in total, one for every pixel in the ground truth.
+Succeding a succesfull forward pass, we evaluate the accuracy of the model by comparing its prediction to the ground truth as defined by a loss function. The main specification the loss function has to adhere to in this problem set-up is the type of target domain in its binary form (fire / no fire). The other is the lopsidedness of our target categories. Due to the very rare nature of fire events, most of the target data describes no-fire, or to the model: zeros. We therefore choose a categorical loss function that in addition to being sensitive to class imbalances is scaleable by a custom weight, the Binary Cross-Entropy (WBCE) loss function. It depends on the model prediction $p_i$, the ground truth $y_i$ and positive weight $w$. The loss function sums $N$ comparisons in total, one for every pixel in the ground truth.
 
 $ L =  -1 / N sum_(i = 1)^N w y_i log(p_i) + (1-y_i)log(1-p_i) $ <eq:wbce>
 
@@ -205,5 +295,17 @@ Parameter choice of the positive weight $w$ is determined by the entirety of the
   caption: [Loss surface of Weighted Binary Cross Entropy (WBCE) loss function],
 ) <fig:loss_3d>
 
-=== Back Propagation & Optimizer
 
+
+=== Back Propagation & Optimizer <subsec:backprop>
+Having obtained a loss for a pair of data and target, the penultimate step requires computing the required weight updates due to the loss. PyTorch has an efficient implementation of this via its *optimizer* modules, chosen here is the Adam optimizer, a stochastic algorithm for first-order gradient-based optimization 
+#citep(<optimizer_adam>)#citep(<pytorch_optim>). The optimizer has access to the model parameters as well as computed. For one set of parameters $theta_t$ the optimizer computes:
+
+
+$ theta_(t+1) = theta_t + nabla_(theta)L $
+
+A baseline learning rate is defined via the project configuration and passed to the optimizer class. It uses this as a baseline value and adjusts it adaptively in order to stabilise and accelerate parameter convergence.
+
+#todo(stroke : green)[Reference pytorch docs]
+
+=== Test Cases
