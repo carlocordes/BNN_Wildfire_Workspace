@@ -5,6 +5,7 @@ from src.models.vit.vit import STViT
 
 #External
 from pathlib import Path
+import json
 import argparse
 from omegaconf import OmegaConf
 import logging
@@ -38,6 +39,7 @@ class WildfireDataset(Dataset):
 
 # Dataset-info
 def get_dataset_parameters(dataset : str):
+    print(type(dataset['dynamic']))
     logging.info(f"Loaded dataset with {dataset['static'].shape[0]} static "\
                  f"and {dataset['dynamic'].shape[1]} with {dataset['dynamic'].shape[2]} timesteps each")
     return {
@@ -56,6 +58,38 @@ def build_dataloader(data_dict, cfg_training):
         batch_size=cfg_training["batch_size"],
         shuffle=False # Dont shuffle chronological data
     )
+
+def load_dataset_dict(path_to_ds: Path):
+    if path_to_ds.is_file():
+        return torch.load(path_to_ds, weights_only=False)
+    
+    # Temporary lists to hold the tensor chunks
+    chunks = {
+        "static": None, # We'll store the first one we find
+        "dynamic": [],
+        "target": []
+    }
+    
+    # Use .pt or .pth (torch.load doesn't usually use .json)
+    for i, file_path in enumerate(sorted(path_to_ds.glob("*.pt"))):
+        logging.info(f'Loading and appending dataset: {file_path}')
+        file_content = torch.load(file_path, weights_only=False)
+        
+        # 1. Handle Static (Keep only the first instance)
+        if chunks["static"] is None:
+            chunks["static"] = file_content.get("static")
+        
+        # 2. Collect chunks for concatenation
+        for key in ["dynamic", "target"]:
+            if key in file_content:
+                chunks[key].append(file_content[key])
+
+    # 3. Concatenate the lists of tensors back into single tensors
+    return {
+        "static": chunks["static"],
+        "dynamic": torch.cat(chunks["dynamic"], dim=0) if chunks["dynamic"] else None,
+        "target": torch.cat(chunks["target"], dim=0) if chunks["target"] else None
+    }
 
 
 # Model
@@ -146,7 +180,7 @@ def main(config_path: Path, dataset_path: str, experiment_path: Path):
 
     # ---- Load Data ----
     logging.info(f"Loading dataset from: {dataset_path}")
-    dataset_dict = torch.load(dataset_path, weights_only=False)
+    dataset_dict = load_dataset_dict(dataset_path)
 
     # ---- Build components ----
     dataloader = build_dataloader(dataset_dict, cfg_training)
@@ -172,7 +206,9 @@ if __name__ == '__main__':
     parser.add_argument("--experiment_path", type=Path, required=True)
 
     args = parser.parse_args()
-    main(args.experiment_path, args.config, args.dataset_path)
+    main(experiment_path=args.experiment_path,
+         config_path=args.config_path,
+         dataset_path=args.dataset_path)
 
-    # Example usage from /code:
+    # Example usage:
     # uv run -m scripts.train --config configs/project.yaml --datasetname test.pt

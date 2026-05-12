@@ -79,6 +79,13 @@ class Dataset_Builder():
 
     def build(self, dataset_name : str):
 
+        ## Prepare out paths
+        if len(self.timeframes) > 1:
+            out_dir = Path(self.cfg['data_sets']['path']) / dataset_name
+            out_dir.mkdir(parents = True, exist_ok = True)
+        else:
+            out_dir = Path(self.cfg['data_sets']['path'])
+
         ## Define source paths
         sample_base_paths = [           
             Path(self.cfg_data['NDVI']),
@@ -173,8 +180,9 @@ class Dataset_Builder():
 
             print(f"Produced dataset {dataset_name} with {tensors_dict['static'].shape[0]} static " \
                 f"and {tensors_dict['dynamic'].shape[1]} with {tensors_dict['dynamic'].shape[2]} timesteps each")
+            
             ## Save
-            out_path = Path(self.cfg['data_sets']['path'] ) / f'{key}_{dataset_name}.pt'
+            out_path = out_dir / f'{dataset_name}_{key}_ds.pt'
             torch.save(obj = tensors_dict, f = out_path)
             print(f'Saved to {out_path}')
 
