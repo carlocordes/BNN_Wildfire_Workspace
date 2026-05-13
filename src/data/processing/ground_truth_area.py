@@ -17,7 +17,7 @@ from rasterio.transform import from_origin
 
 
 def produce_tiffs(golden_grid : GoldenGrid, target_extent : int, in_path : Path, out_path : Path):
-
+    print(f'Processing ground truth area from {in_path} to {out_path}')
     # Gather years
     start_year = datetime.strptime(golden_grid.start_date, "%Y-%m-%d").year
     end_year = datetime.strptime(golden_grid.end_date, "%Y-%m-%d").year

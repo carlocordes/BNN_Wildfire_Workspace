@@ -3,6 +3,7 @@ from src.core.goldengrid import GoldenGrid
 from src.core.utils import load_config
 from src.data.processing.ground_truth import grid_target_map
 from src.data.processing.dtm_derivatives import dtm_derivatives
+from src.data.processing.ground_truth_area import produce_tiffs
 
 
 # External
@@ -41,6 +42,7 @@ class DataProcessor():
         # Perform processing to paths
         cfg_data_paths = cfg['data_paths']
 
+        """ # Deprecated targets
         # 1. Targets
         cfg_target_path = Path(cfg_data_paths["processed"]['target'])
         cfg_target_out = cfg_data_paths['raw']['target']
@@ -48,7 +50,7 @@ class DataProcessor():
         grid_target_map(path_to_db=cfg_db_path,
                         out_path=cfg_target_path,
                         golden_grid=portugal_ggrid)
-
+        
         # 2. DTM derivatives
         cfg_data_dtm = Path(cfg_data_paths['raw']['DTM'])
         cfg_data_slope = Path(cfg_data_paths['processed']['slope'])
@@ -57,10 +59,19 @@ class DataProcessor():
                         path_to_dtm = cfg_data_dtm,
                         path_to_aspect = cfg_data_aspect,
                         path_to_slope = cfg_data_slope)
+        """
 
-
-
+        # Target
         cfg_target_extent = temporal_extent['target_extent'] # TODO: Use for target Area func
+        cfg_target_path = Path(cfg_data_paths['raw']['target']['area'])
+        cfg_target_out = Path(cfg_data_paths['processed']['target_area'])
+        produce_tiffs(golden_grid=portugal_ggrid,
+                      in_path = cfg_target_path,
+                      out_path = cfg_target_out,
+                      target_extent = cfg_target_extent)
+
+
+
         # Add other processes here
         #
         #
