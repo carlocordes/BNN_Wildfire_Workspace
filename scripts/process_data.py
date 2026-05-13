@@ -59,6 +59,8 @@ class DataProcessor():
                         path_to_slope = cfg_data_slope)
 
 
+
+        cfg_target_extent = temporal_extent['target_extent'] # TODO: Use for target Area func
         # Add other processes here
         #
         #

@@ -39,7 +39,6 @@ class WildfireDataset(Dataset):
 
 # Dataset-info
 def get_dataset_parameters(dataset : str):
-    print(type(dataset['dynamic']))
     logging.info(f"Loaded dataset with {dataset['static'].shape[0]} static "\
                  f"and {dataset['dynamic'].shape[1]} with {dataset['dynamic'].shape[2]} timesteps each")
     return {
