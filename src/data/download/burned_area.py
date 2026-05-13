@@ -82,13 +82,12 @@ if __name__ == '__main__':
     latmin, longmin = 36.812, -9.490
     latmax, longmax = 42.2724, -6.0234
 
-    # Using a 5-year range as per your request
-    start_date = '2020-01-01'
+    start_date = '2015-01-01'
     end_date = '2025-12-31'
 
     portugal_ggrid = GoldenGrid(
         crs = 'EPSG:3763',
-        scale = 500,
+        scale = 1000,
         bbox = [longmin, latmin, longmax, latmax],
         start_date = start_date,
         end_date = end_date,
