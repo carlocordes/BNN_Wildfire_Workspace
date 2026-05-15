@@ -3,8 +3,7 @@ from src.core.goldengrid import GoldenGrid
 from src.core.utils import load_config
 from src.data.processing.ground_truth import grid_target_map
 from src.data.processing.dtm_derivatives import dtm_derivatives
-from src.data.processing.ground_truth_area import produce_tiffs
-
+from src.data.processing.targets_from_zarr import produce_targets
 
 # External
 import argparse
@@ -43,15 +42,9 @@ class DataProcessor():
         cfg_data_paths = cfg['data_paths']
 
         """ # Deprecated targets
-        # 1. Targets
-        cfg_target_path = Path(cfg_data_paths["processed"]['target'])
-        cfg_target_out = cfg_data_paths['raw']['target']
-        cfg_db_path = Path(cfg_target_out['csv']) / cfg_target_out['db_name']
-        grid_target_map(path_to_db=cfg_db_path,
-                        out_path=cfg_target_path,
-                        golden_grid=portugal_ggrid)
         
-        # 2. DTM derivatives
+        # 1. DTM derivatives
+        print('Processing derivatives of digital terrain model')
         cfg_data_dtm = Path(cfg_data_paths['raw']['DTM'])
         cfg_data_slope = Path(cfg_data_paths['processed']['slope'])
         cfg_data_aspect = Path(cfg_data_paths['processed']['aspect'])
@@ -61,13 +54,15 @@ class DataProcessor():
                         path_to_slope = cfg_data_slope)
         """
 
-        # Target
-        cfg_target_extent = temporal_extent['target_extent'] # TODO: Use for target Area func
-        cfg_target_path = Path(cfg_data_paths['raw']['target']['area'])
-        cfg_target_out = Path(cfg_data_paths['processed']['target_area'])
-        produce_tiffs(golden_grid=portugal_ggrid,
-                      in_path = cfg_target_path,
-                      out_path = cfg_target_out,
+        ## Target
+        print('Processing targets.')
+        
+        cfg_raw_target = Path(cfg_data_paths['raw']['target'])
+        cfg_processed_target = Path(cfg_data_paths['processed']['target'])
+        cfg_target_extent = temporal_extent['target_extent']
+        produce_targets(golden_grid=portugal_ggrid,
+                      in_path = cfg_raw_target,
+                      out_path_target = cfg_processed_target,
                       target_extent = cfg_target_extent)
 
 

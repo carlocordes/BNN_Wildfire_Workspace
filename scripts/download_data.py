@@ -4,9 +4,11 @@ from src.core.utils import load_config
 from src.core.goldengrid import GoldenGrid
 from src.data.download.dtm import get_one_dtm_image
 from src.data.download.lst_modis import download_yearly_lst
-from src.data.download.burn_targets import ingest_burn_records
+#from src.data.download.burn_targets import ingest_burn_records
 from src.data.download.era5_wind import download_era5_wind_catalogue
 from src.data.download.ndvi import download_ndvi_catalogue
+from src.data.download.burned_area import download_area_with_uncertainty
+
 
 # External
 from pathlib import Path
@@ -58,7 +60,7 @@ class DataDownloader():
         # DTM
         cfg_dtm_path = Path(cfg_data_paths["raw"]['elevation'])
         get_one_dtm_image(cfg_dtm_path, portugal_ggrid)
-        """
+
         # Targets
         cfg_burn_config = cfg_data_paths['raw']['target']
         ingest_burn_records(cfg_burn_config)
@@ -76,7 +78,13 @@ class DataDownloader():
                                      speed_dir = cfg_wind_speed_path,
                                      dir_v_dir = cfg_wind_comp_v_path,
                                      dir_u_dir = cfg_wind_comp_u_path)
+        """
 
+        # New targets
+        print('Downloading Targets')
+        cfg_raw_target = Path(cfg_data_paths['raw']['target'])
+        download_area_with_uncertainty(golden_grid=portugal_ggrid,
+                                       out_path=cfg_raw_target)
 
 
         print('Completed Download')

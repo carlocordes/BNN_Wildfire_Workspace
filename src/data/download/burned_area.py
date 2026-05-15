@@ -12,6 +12,7 @@ import xarray as xr
 import math
 import numpy as np
 import pandas as pd
+import zarr
 
 def init_zarr(golden_grid : GoldenGrid, zarr_path : Path):
     ## Establish dimensions of output via test request
@@ -127,8 +128,10 @@ def download_area_with_uncertainty(
 
 
     ## Initialize Zarr
-    ds_master = init_zarr(golden_grid=golden_grid, zarr_path=out_path)
+    init_zarr(golden_grid=golden_grid, zarr_path=out_path)
 
+    z_burn = zarr.open(str(out_path / 'burn'), mode='r+')
+    z_uncertainty = zarr.open(str(out_path / 'uncertainty'), mode='r+')
 
     for year in range(start_year, end_year + 1):
         print(f"--- Processing Year: {year} ---")
@@ -172,24 +175,24 @@ def download_area_with_uncertainty(
                 y_indices, x_indices = np.where(burn_data > 0)
 
                 if len(y_indices) > 0:
-                    print(f'Found {len(y_indices)} burned pixels in month {i+1}')
-
-                    for y, x in zip(y_indices, x_indices):
-                        julian_day = int(burn_data[y, x])
-                        uncertainty = int(unc_data[y, x])
+                    print(f'Found {len(y_indices)} burn pixels for month {i+1}-{year}')
+                    # Use batch assignment for speed
+                    julian_days = burn_data[y_indices, x_indices].astype(int)
+                    uncertainties = unc_data[y_indices, x_indices]
+                    
+                    time_indices = day_offset + (julian_days - 1)
+                    
+                    # Direct write to disk
+                    # This only modifies the specific chunks affected by these pixels
+                    for idx in range(len(time_indices)):
+                        t = time_indices[idx]
+                        yy, xx = y_indices[idx], x_indices[idx]
                         
-                        # Calculate the global time index
-                        time_idx = day_offset + (julian_day - 1)
+                        if 0 <= t < z_burn.shape[0]:
+                            z_burn[t, yy, xx] = 1
+                            z_uncertainty[t, yy, xx] = uncertainties[idx]
 
-                        # Safety check for bounds and update
-                        if 0 <= time_idx < len(golden_grid.dates):
-                            # Update the Zarr store in-place
-                            # Note: .values is used for direct assignment to the opened Zarr
-                            ds_master.burn[time_idx, y, x] = 1
-                            ds_master.uncertainty[time_idx, y, x] = uncertainty
-
-    ds_master.to_zarr(out_path, mode = 'w')
-    print(f'Wrote burn records from {years[-1]} to {years[0]} to zarr at : {out_path}')
+        print(f"Finished Year {year}. Progress is saved to disk.")
 
 if __name__ == '__main__':
     # Initialize with your project ID
@@ -200,8 +203,8 @@ if __name__ == '__main__':
     latmin, longmin = 36.812, -9.490
     latmax, longmax = 42.2724, -6.0234
 
-    start_date = '2025-01-01'
-    end_date = '2025-12-31'
+    start_date = '2015-01-01'
+    end_date = '2026-12-31'
 
     portugal_ggrid = GoldenGrid(
         crs = 'EPSG:3763',
