@@ -41,9 +41,9 @@ class DataProcessor():
         # Perform processing to paths
         cfg_data_paths = cfg['data_paths']
 
-        """ # Deprecated targets
+        """
         
-        # 1. DTM derivatives
+        # DTM derivatives
         print('Processing derivatives of digital terrain model')
         cfg_data_dtm = Path(cfg_data_paths['raw']['DTM'])
         cfg_data_slope = Path(cfg_data_paths['processed']['slope'])
@@ -56,7 +56,7 @@ class DataProcessor():
 
         ## Target
         print('Processing targets.')
-        
+
         cfg_raw_target = Path(cfg_data_paths['raw']['target'])
         cfg_processed_target = Path(cfg_data_paths['processed']['target'])
         cfg_target_extent = temporal_extent['target_extent']

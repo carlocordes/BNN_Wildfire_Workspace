@@ -104,9 +104,10 @@ class Dataset_Builder():
 
 
         ## Load dynamic data
-        sample_tensors = []
-        target_tensors = []
+
         for key, timeframes in self.timeframes.items():
+            sample_tensors = []
+            target_tensors = []
             for timeframe in timeframes: 
                 try:
                     channel_sample_tensors = []
