@@ -1,5 +1,4 @@
 # Internal
-from src.core.systempaths import DATASETS, MODELS
 from src.core.utils import load_config
 from src.models.vit.vit import STViT
 
@@ -7,14 +6,12 @@ from src.models.vit.vit import STViT
 from pathlib import Path
 import json
 import argparse
-from omegaconf import OmegaConf
 import logging
-from datetime import datetime
 
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.utils.data import DataLoader, Dataset
+from torch.utils.data import DataLoader, Dataset, Subset
 from torch.utils.tensorboard import SummaryWriter
 
 class WildfireDataset(Dataset):
@@ -48,16 +45,62 @@ def get_dataset_parameters(dataset : str):
     }
 
 
-# Dataset
-def build_dataloader(data_dict, cfg_training):
-
+# Dataloaders
+def build_dataloaders(data_dict, cfg_training):
+    """
+    Loads dataloaders split by 70 / 15 / 15 (Train/Validate/Test)
+    """
     dataset = WildfireDataset(data_dict)
-    return DataLoader(
+
+    N = len(dataset)
+    
+    end_train = cfg_training['train_size']
+    end_val = 1 - cfg_training['val_size']
+
+    train_end = int(0.70 * N)
+    val_end = int(0.85 * N)
+
+    train_dataset = Subset(
         dataset,
-        batch_size=cfg_training["batch_size"],
-        shuffle=False # Dont shuffle chronological data
+        range(0, train_end)
     )
 
+    val_dataset = Subset(
+        dataset,
+        range(train_end, val_end)
+    )
+
+    test_dataset = Subset(
+        dataset,
+        range(val_end, N)
+    )
+
+    logging.info("Dataset split:")
+    logging.info(f"Train samples: {len(train_dataset)}")
+    logging.info(f"Validation samples: {len(val_dataset)}")
+    logging.info(F"Test samples: {len(test_dataset)}")
+
+    train_loader = DataLoader(
+        train_dataset,
+        batch_size=cfg_training["batch_size"],
+        shuffle=False
+    )
+
+    val_loader = DataLoader(
+        val_dataset,
+        batch_size=cfg_training["batch_size"],
+        shuffle=False
+    )
+
+    test_loader = DataLoader(
+        test_dataset,
+        batch_size=cfg_training["batch_size"],
+        shuffle=False
+    )
+
+    return train_loader, val_loader, test_loader
+
+# Load dataset folder or file
 def load_dataset_dict(path_to_ds: Path):
     if path_to_ds.is_file():
         return torch.load(path_to_ds, weights_only=False)
@@ -90,7 +133,6 @@ def load_dataset_dict(path_to_ds: Path):
         "target": torch.cat(chunks["target"], dim=0) if chunks["target"] else None
     }
 
-
 # Model
 def build_model(cfg_model, device, ds_info):
     model = STViT(
@@ -102,27 +144,77 @@ def build_model(cfg_model, device, ds_info):
     )
     return model.to(device)
 
+# Evaluation
+def evaluate(model, loss_fn, dataloader, device):
+
+    model.eval()
+
+    total_loss = 0.0
+
+    with torch.no_grad():
+
+        for batch in dataloader:
+
+            # Get data
+            static_x = batch['static'].to(device)
+            dynamic_x = batch['dynamic'].to(device)
+            targets = batch['target'].to(device)
+
+            # Predict
+            preds = model(
+                x_static=static_x,
+                x_dynamic=dynamic_x
+            )
+
+            # Get loss
+            loss = loss_fn(preds, targets)
+            total_loss += loss.item()
+
+    avg_loss = total_loss / len(dataloader) # Sum
+
+    model.train() # Back to train mode
+
+    return avg_loss
 
 # Training
-def train(model, loss_fn, dataloader, cfg_training, device, writer, model_save_path):
-    optimizer = optim.Adam(model.parameters(), lr=cfg_training["learning_rate"])
+def train(model, loss_fn,
+          train_dataloader, val_dataloader, test_dataloader, 
+          cfg_training, device, writer, model_save_path):
     
+    # Optimizer
+    optimizer = optim.Adam(model.parameters(), lr=cfg_training["learning_rate"]) # TODO: Maybe replace with AdamW(lr, weight_decay)
+    
+
+    # Break conditions
+    patience = cfg_training['patience']
+    epochs_without_improvement = 0
+
+
     # Track the best loss to save the best model state
     best_loss = float('inf') 
 
-    model.train()
+    model.train() # Set training mode
+
     logging.info("Starting training loop...")
 
     for epoch in range(cfg_training['num_epochs']):
         epoch_loss = 0.0
 
-        for batch_idx, batch in enumerate(dataloader):
-            logging.info(f'Processing batch index: {batch_idx}')
+        for batch_idx, batch in enumerate(train_dataloader):
+            
+            logging.info(f'Epoch {epoch+1} | '
+                f'Processing batch {batch_idx}'
+            )
+            
+            # Get data
             static_x = batch['static'].to(device)
             dynamic_x = batch['dynamic'].to(device)
             targets = batch['target'].to(device)
 
+            # Predict
             preds = model(x_static=static_x, x_dynamic=dynamic_x)
+
+            # Calculate loss
             loss = loss_fn(preds, targets)
 
             optimizer.zero_grad()
@@ -131,17 +223,45 @@ def train(model, loss_fn, dataloader, cfg_training, device, writer, model_save_p
 
             epoch_loss += loss.item()
 
-        avg_loss = epoch_loss / len(dataloader)
-        logging.info(f"Epoch [{epoch+1}/{cfg_training['num_epochs']}] - Loss: {avg_loss:.6f}")
-        
-        # 1. Log to TensorBoard
-        writer.add_scalar('Training/Loss', avg_loss, epoch)
+        train_loss = epoch_loss / len(train_dataloader)
 
-        # 2. Save the model ONLY if it improved (Best Practice)
-        if avg_loss < best_loss:
-            best_loss = avg_loss
-            torch.save(model.state_dict(), model_save_path)
-            logging.info(f"--> Validation loss improved. Model saved to {model_save_path}")
+        # Validate
+        val_loss = evaluate(model = model,
+                            loss_fn = loss_fn,
+                            dataloader = val_dataloader,
+                            device = device)
+
+        # Log and TensorBoard
+        writer.add_scalar('Loss/Train', train_loss, epoch)
+        writer.add_scalar('Loss/Validation', val_loss)
+        #writer.add_scalar('LearningRate')
+
+        logging.info(
+            f"Epoch [{epoch+1}/{cfg_training['num_epochs']}] "
+            f"Train Loss: {train_loss:.6f} | "
+            f"Val Loss: {val_loss:.6f}"
+        )
+        
+
+        # Save model if validation loss improved
+        if val_loss < best_loss:
+            
+            best_loss = val_loss # Update
+            epochs_without_improvement = 0 # Reset
+
+            torch.save(model.state_dict(),
+                       model_save_path)
+            logging.info(f"Validation improved. Saved model.")
+
+        # Continue
+        else:
+            epochs_without_improvement += 1
+            logging.info(f"No validation improvement for {epochs_without_improvement} epoch(s).")
+
+        # Trigger stop after patience
+        if epochs_without_improvement > patience:
+            logging.info(f"Early stop triggered after {epoch + 1} epochs")
+            break
 
     logging.info("Training complete.")
 
@@ -150,12 +270,10 @@ def train(model, loss_fn, dataloader, cfg_training, device, writer, model_save_p
 # ----------------------------
 def main(config_path: Path, dataset_path: str, experiment_path: Path):
     
-
-
-    # --- Setup Logging Directory and File ---
+    # --- Setup Logging Directory and File ----
     exp_name = experiment_path.stem
 
-    # Configure Python Logging
+    # ---- Python Logging ----
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s [%(levelname)s] %(message)s",
@@ -165,8 +283,9 @@ def main(config_path: Path, dataset_path: str, experiment_path: Path):
         ]
     )
     
-    # Initialize TensorBoard Writer
+    # ---- TensorBoard Writer ----
     writer = SummaryWriter(log_dir=str(experiment_path))
+
 
     # ---- Load config ----
     cfg = load_config(config_path)
@@ -177,23 +296,58 @@ def main(config_path: Path, dataset_path: str, experiment_path: Path):
     device = torch.accelerator.current_accelerator().type if torch.accelerator.is_available() else "cpu"
     logging.info(f"Using {device} device")
 
+
     # ---- Load Data ----
     logging.info(f"Loading dataset from: {dataset_path}")
     dataset_dict = load_dataset_dict(dataset_path)
 
+
     # ---- Build components ----
-    dataloader = build_dataloader(dataset_dict, cfg_training)
+    train_dataloader, val_dataloader, test_dataloader = build_dataloaders(dataset_dict, cfg_training)
     ds_info = get_dataset_parameters(dataset_dict)
 
     model = build_model(cfg_model, device, ds_info)
+
     loss_fn = nn.BCEWithLogitsLoss(pos_weight=torch.Tensor([cfg_training["pos_weight"]])).to(device)
+
 
     # --- Define Save Path ---
     experiment_path.mkdir(exist_ok=True)
     model_save_path = experiment_path / f"{exp_name}_model_best.pt"
 
+
     # ---- Train ----
-    train(model, loss_fn, dataloader, cfg_training, device, writer, model_save_path)
+    train(model = model,
+          loss_fn = loss_fn,
+          train_dataloader = train_dataloader,
+          val_dataloader = val_dataloader,
+          test_dataloader = test_dataloader,
+          cfg_training = cfg_training,
+          device = device,
+          writer = writer,
+          model_save_path = model_save_path)
+
+    # Final test
+    model.load_state_dict(
+        torch.load(
+            model_save_path,
+            map_location=device
+        )
+    )
+    
+
+    # Evaluate on test data
+    test_loss = evaluate(
+        model = model,
+        loss_fn = loss_fn,
+        dataloader = test_dataloader,
+        device = device
+    )
+
+
+    # Log and write
+    logging.info(f"Final Test Loss: {test_loss:.6f}")
+    writer.add_scalar("Loss/Test", test_loss)
 
     # Close the TensorBoard writer
     writer.close()
