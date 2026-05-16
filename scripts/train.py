@@ -233,7 +233,7 @@ def train(model, loss_fn,
 
         # Log and TensorBoard
         writer.add_scalar('Loss/Train', train_loss, epoch)
-        writer.add_scalar('Loss/Validation', val_loss)
+        writer.add_scalar('Loss/Validation', val_loss, epoch)
         #writer.add_scalar('LearningRate')
 
         logging.info(
