@@ -3,6 +3,30 @@ import torch.nn as nn
 import torch.nn.functional as F
 import math
 
+class FusionBlock(nn.Module):
+    def __init__(self, dim, heads):
+        super().__init__()
+
+        self.attn = nn.MultiheadAttention(dim, heads, batch_first=True)
+
+        self.ff = nn.Sequential(
+            nn.Linear(dim, dim * 4),
+            nn.GELU(),
+            nn.Linear(dim * 4, dim)
+        )
+
+        self.norm1 = nn.LayerNorm(dim)
+        self.norm2 = nn.LayerNorm(dim)
+
+    def forward(self, x, context):
+        # cross-attn
+        attn_out, _ = self.attn(x, context, context)
+        x = self.norm1(x + attn_out)
+
+        # feedforward
+        x = self.norm2(x + self.ff(x))
+        return x
+
 class STViT(nn.Module):
     """
     Spatio-temporal Vision Transformer
@@ -124,11 +148,10 @@ class STViT(nn.Module):
 
 
         # Cross-Attention block
-        self.module_fusion = nn.MultiheadAttention(
-            embed_dim=embedding_dim,
-            num_heads = 8,
-            batch_first = True
-        )
+        self.module_fusion = nn.ModuleList([
+            FusionBlock(embedding_dim, 8)
+            for _ in range(6)
+        ])
 
         # Decoder
         self.decoder = nn.Sequential(
@@ -246,15 +269,10 @@ class STViT(nn.Module):
 
 
         ## Final fusion
-        fused_output, _ = self.module_fusion(
-            query = dynamic_mixed,
-            key = static_mixed,
-            value = static_mixed
-        )
+        fused_tokens = dynamic_mixed
 
-        fused_tokens = dynamic_mixed + fused_output # Add residual
-
-        
+        for block in self.module_fusion:
+            fused_tokens = block(fused_tokens, static_mixed)
 
         ## Decoder
         batch_size, _, __ = fused_tokens.shape
