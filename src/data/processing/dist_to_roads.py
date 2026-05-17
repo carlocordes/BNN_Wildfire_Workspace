@@ -29,8 +29,9 @@ def produce_roads_distance_image(in_path : Path, out_dir : Path, golden_grid : G
     all_roads = gpd.read_file(filename = filename)
 
     # bbox coordinates
+    bbox_buffer = 1 # degree buffer to alleviate edge case
     minx, miny, maxx, maxy = golden_grid.bbox
-    bbox_geom = box(minx, miny, maxx, maxy)
+    bbox_geom = box(minx - bbox_buffer, miny - bbox_buffer, maxx + bbox_buffer, maxy + bbox_buffer)
 
     # Make bbox gdf
     bbox_gdf = gpd.GeoDataFrame(
