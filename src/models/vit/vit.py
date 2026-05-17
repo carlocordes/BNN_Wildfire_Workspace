@@ -58,18 +58,70 @@ class STViT(nn.Module):
 
         # Self-Attention blocks
         self.static_encoders = nn.ModuleList([
-            nn.TransformerEncoderLayer(d_model = self.embedding_dim, nhead = 4, batch_first = True)
+            nn.TransformerEncoder(
+                encoder_layer=nn.TransformerEncoderLayer(
+                    d_model=self.embedding_dim,
+                    nhead=8,
+                    dim_feedforward=self.embedding_dim * 4,
+                    dropout=0.1,
+                    activation="gelu",
+                    batch_first=True,
+                    norm_first=True
+                ),
+                num_layers=4
+            )
             for _ in range(self.num_static_channels)
         ])
 
+
         self.dynamic_encoders = nn.ModuleList([
-            nn.TransformerEncoderLayer(d_model = self.embedding_dim, nhead = 4, batch_first = True)
+            nn.TransformerEncoder(
+                encoder_layer=nn.TransformerEncoderLayer(
+                    d_model=self.embedding_dim,
+                    nhead=8,
+                    dim_feedforward=self.embedding_dim * 4,
+                    dropout=0.1,
+                    activation="gelu",
+                    batch_first=True,
+                    norm_first=True
+                ),
+                num_layers=4
+            )
             for _ in range(self.num_dynamic_channels)
         ])
-
+        
         # Mixers for concat operations
-        self.static_mixer = nn.Linear(self.num_static_channels * self.embedding_dim, self.embedding_dim)
-        self.dynamic_mixer = nn.Linear(self.num_dynamic_channels * self.embedding_dim, self.embedding_dim)
+        self.static_mixer = nn.Sequential(
+            nn.Linear(
+                self.num_static_channels * self.embedding_dim,
+                self.embedding_dim * 2
+            ),
+            nn.GELU(),
+            nn.Dropout(0.1),
+
+            nn.Linear(
+                self.embedding_dim * 2,
+                self.embedding_dim
+            ),
+            nn.LayerNorm(self.embedding_dim)
+        )
+        
+        
+        self.dynamic_mixer = nn.Sequential(
+            nn.Linear(
+                self.num_dynamic_channels * self.embedding_dim,
+                self.embedding_dim * 2
+            ),
+            nn.GELU(),
+            nn.Dropout(0.1),
+
+            nn.Linear(
+                self.embedding_dim * 2,
+                self.embedding_dim
+            ),
+            nn.LayerNorm(self.embedding_dim)
+        )
+
 
         # Cross-Attention block
         self.module_fusion = nn.MultiheadAttention(
