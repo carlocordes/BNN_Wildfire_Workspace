@@ -16,6 +16,7 @@ dependencies = [
     "numpy<=2.4.1",
     "omegaconf>=2.3.0",
     "rasterio<=1.4",
+    "rioxarray>=0.18.2",
     "scikit-learn>=1.8.0",
     "tensorboard>=2.20.0",
     "torch==2.9.1",

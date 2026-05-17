@@ -6,7 +6,8 @@ from datetime import datetime
 import numpy as np
 import pandas as pd
 import rasterio
-from rasterio.transform import from_origin
+from rasterio.transform import from_origin, from_bounds
+from rasterio.warp import transform_bounds
 import xarray as xr
 from pathlib import Path
 
@@ -14,101 +15,101 @@ def get_dates_since_last_burn(
     zarr_path: Path,
     golden_grid,
     target_date: str,
-    out_tif: Path,
-    nodata: int = -9999
+    out_path: Path,
+    nodata: int = 9999
 ):
     """
     Creates a GeoTIFF where each pixel contains:
     days since last burn event up to target_date.
     """
 
-    # -----------------------------
-    # 1. Load dataset
-    # -----------------------------
-    ds = xr.open_zarr(zarr_path)
+    # Load dataset
+    ds = xr.open_zarr(zarr_path, mask_and_scale=False)
 
-    burn = ds["burn"].values  # (time, y, x)
-    time_coords = ds["time"].values
+    target_dt = pd.to_datetime(target_date)
 
-    # Convert target date → index
-    target_dt = np.datetime64(target_date)
-    if target_dt not in time_coords:
-        raise ValueError(f"{target_date} not found in Zarr time coordinate")
+    if target_dt < pd.to_datetime(ds.time.values[0]):
+        raise ValueError(f"Target date {target_date} is before the dataset start date.")
 
-    t_index = int(np.where(time_coords == target_dt)[0][0])
+    # Slice up to target date
+    ds_historical = ds.sel(time=slice(None, target_date))
+    target_index = len(ds_historical.time) - 1
 
-    # Only consider data up to target date
-    burn = burn[: t_index + 1]
+    num_days = len(ds_historical.time)
+    time_indices = xr.DataArray(
+            np.arange(num_days), 
+            dims=['time'], 
+            coords={'time': ds_historical.time}
+        )
+    
+    # Binary mask for day interval
+    burn_indices = ds_historical.burn * time_indices
 
-    T, H, W = burn.shape
+    # Get days indices for every pixel
+    last_fire_index = burn_indices.max(dim='time')
 
-    # -----------------------------
-    # 2. Compute last burn time index per pixel
-    # -----------------------------
-    # Convert burn events into time indices
-    # Shape: (T, H*W)
-    burn_flat = burn.reshape(T, -1)
+    days_since = target_index - last_fire_index
 
-    # Replace non-burns with -inf, burns with time index
-    time_index = np.arange(T).reshape(T, 1)
+    # Case handling: pixels never burned
+    ever_burned = ds_historical.burn.any(dim='time')
+    days_since = days_since.where(ever_burned, nodata)
 
-    burn_time = np.where(burn_flat == 1, time_index, -1)
+    # Cast to int and get values
+    raster_data = days_since.values.astype(np.int16)
 
-    # Running maximum over time axis → last burn time index
-    last_burn_time = np.maximum.accumulate(burn_time, axis=0)
 
-    last_burn_time = last_burn_time.reshape(H, W)
+    # Dimension handling
+    height, width = raster_data.shape
+    west_4326, south_4326, east_4326, north_4326 = golden_grid.bbox
+    west, south, east, north = transform_bounds(
+        src_crs="EPSG:4326",
+        dst_crs=golden_grid.crs,  # e.g., 'EPSG:3763'
+        left=west_4326,
+        bottom=south_4326,
+        right=east_4326,
+        top=north_4326
+    )
 
-    # -----------------------------
-    # 3. Compute days since last burn
-    # -----------------------------
-    days_since = np.full((H, W), nodata, dtype=np.int32)
+    # Define transform
+    transform = from_bounds(west, south, east, north, width, height)
 
-    valid = last_burn_time >= 0
-    days_since[valid] = t_index - last_burn_time[valid]
+    fname = out_path / f'{target_date}.tif'
 
-    # Optional: pixels that burned on target day → 0
-    days_since[last_burn_time == t_index] = 0
+    meta = {
+        'driver': 'GTiff',
+        'height': height,
+        'width': width,
+        'count': 1,                  
+        'dtype': rasterio.int16,
+        'crs': golden_grid.crs,      
+        'transform': transform,
+        'nodata': nodata,
+        'compress': 'lzw'            
+    }
 
-    # -----------------------------
-    # 4. Geo transform (from grid)
-    # -----------------------------
-    # Assumes golden_grid has bbox: [xmin, ymin, xmax, ymax]
-    xmin, ymin, xmax, ymax = golden_grid.bbox
-    height, width = H, W
+    with rasterio.open(fname, 'w', **meta) as dst:
+        dst.write(raster_data, 1) 
 
-    x_res = (xmax - xmin) / width
-    y_res = (ymax - ymin) / height
+    print(f'Wrote burn raster for {target_date} to {out_path}')   
 
-    transform = from_origin(xmin, ymax, x_res, y_res)
 
-    # -----------------------------
-    # 5. Write GeoTIFF
-    # -----------------------------
-    out_tif.parent.mkdir(parents=True, exist_ok=True)
+def process_burn_history_catalogue(zarr_path : Path, out_path: Path, golden_grid: GoldenGrid):
+    date_strings = golden_grid.dates.strftime('%Y-%m-%d').tolist()
+    for date in date_strings:
+        get_dates_since_last_burn(
+            zarr_path=zarr_path,
+            out_path = out_path,
+            golden_grid=golden_grid,
+            target_date=date,
+        )
 
-    with rasterio.open(
-        out_tif,
-        "w",
-        driver="GTiff",
-        height=height,
-        width=width,
-        count=1,
-        dtype="int32",
-        crs=golden_grid.crs,
-        transform=transform,
-        nodata=nodata,
-    ) as dst:
-        dst.write(days_since, 1)
-
-    print(f"Saved: {out_tif}")
 
 if __name__ == '__main__':
     latmin, longmin = 36.812, -9.490
     latmax, longmax = 42.2724, -6.0234
 
     start_date = '2024-01-01'
-    end_date = '2024-01-02'
+    end_date = '2024-01-01'
 
     portugal_ggrid = GoldenGrid(
         crs='EPSG:3763',
@@ -119,11 +120,11 @@ if __name__ == '__main__':
         day_interval=1
     )
 
-
     zarr_path = Path('data', 'raw', 'target_zarr')
     target_date = datetime(2024, 8, 1)
 
-    get_dates_since_last_burn(zarr_path=zarr_path,
-                              golden_grid= portugal_ggrid,
-                              target_date=target_date,
-                              out_tif=Path('data', 'processed', 'burn_history', 'test.tif'))
+    process_burn_history_catalogue(
+        zarr_path=zarr_path,
+        golden_grid= portugal_ggrid,
+        out_path=Path('data', 'processed', 'burn_history')
+    )

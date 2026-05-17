@@ -4,6 +4,8 @@ from src.core.utils import load_config
 from src.data.processing.ground_truth import grid_target_map
 from src.data.processing.dtm_derivatives import dtm_derivatives
 from src.data.processing.dist_to_roads import produce_roads_distance_image
+from src.data.processing.days_since_burn import process_burn_history_catalogue
+
 from src.data.processing.targets_from_zarr import produce_targets
 
 # External
@@ -41,13 +43,21 @@ class DataProcessor():
 
         # Perform processing to paths
         cfg_data_paths = cfg['data_paths']
-
+        
+        """
         # Distance to roads
         cfg_raw_roads = Path(cfg_data_paths['raw']['roads'])
         cfg_raw_out = Path(cfg_data_paths['processed']['roads'])
         produce_roads_distance_image(in_path = cfg_raw_roads,
                                      out_dir=cfg_raw_out,
                                      golden_grid= ggrid)
+        """
+        # Burn history from zarr
+        cfg_raw_burn_history = Path(cfg_data_paths['raw']['target'])
+        cfg_out_burn_history = Path(cfg_data_paths['processed']['burn_history'])
+        process_burn_history_catalogue(zarr_path=cfg_raw_burn_history,
+                                       out_path=cfg_out_burn_history,
+                                       golden_grid=ggrid)
 
         """
         
