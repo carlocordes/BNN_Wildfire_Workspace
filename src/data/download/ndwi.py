@@ -12,41 +12,46 @@ def download_one_modis_ndwi_image(
     golden_grid: GoldenGrid,
     out_path: Path
 ):
-
-    out_path.mkdir(parents=True, exist_ok=True)
-
-    start = ee.Date(date)
-    end = start.advance(1, "day")
-
-    modis_collection = (
-        ee.ImageCollection("MODIS/061/MOD09GA")
-        .filterDate(start, end)
-        .filterBounds(golden_grid.aoi)
-    )
-
-    if modis_collection.size().getInfo() == 0:
-        print(f"No MODIS image found for {date}")
-        return
-
-    image = modis_collection.first()
-
-    # NDWI (vegetation moisture version)
-    ndwi = image.normalizedDifference(
-        ['sur_refl_b02', 'sur_refl_b06']
-    ).rename('NDWI')
-
-    # Cloud masking using state QA
-    state_qa = image.select('state_1km')
-
-    # Bits 0–1 = cloud state (0 = clear)
-    cloud_mask = state_qa.bitwiseAnd(3).eq(0)
-
-    ndwi = ndwi.updateMask(cloud_mask)
-
-    print(f"Downloading NDWI for {date} to {out_path}...")
-
+    
     fname = date + '.tif'
     file_path = out_path / fname
+
+    if not file_path.exists():
+
+        out_path.mkdir(parents=True, exist_ok=True)
+
+        start = ee.Date(date)
+        end = start.advance(1, "day")
+
+        modis_collection = (
+            ee.ImageCollection("MODIS/061/MOD09GA")
+            .filterDate(start, end)
+            .filterBounds(golden_grid.aoi)
+        )
+
+        if modis_collection.size().getInfo() == 0:
+            print(f"No MODIS image found for {date}")
+            return
+
+        image = modis_collection.first()
+
+        # NDWI (vegetation moisture version)
+        ndwi = image.normalizedDifference(
+            ['sur_refl_b02', 'sur_refl_b06']
+        ).rename('NDWI')
+
+        # Cloud masking using state QA
+        state_qa = image.select('state_1km')
+
+        # Bits 0–1 = cloud state (0 = clear)
+        cloud_mask = state_qa.bitwiseAnd(3).eq(0)
+
+        ndwi = ndwi.updateMask(cloud_mask)
+
+        print(f"Downloading NDWI for {date} to {out_path}...")
+
+    else:
+        print('File already exists. Skipping.')
 
     geemap.ee_export_image(
         ndwi,
@@ -92,10 +97,7 @@ if __name__ == '__main__':
         end_date = end_date,
         day_interval = 1
     )
-    """
-    download_modis_ndvi_image('2024-08-08',
-                              portugal_ggrid,
-                              Path('data', 'processed', 'NDVI'))
-                              """
+
+    
     ndwi_path = Path('data', 'processed', 'NDWI')
     download_ndwi_catalogue(ndwi_path, portugal_ggrid)

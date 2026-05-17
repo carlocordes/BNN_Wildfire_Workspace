@@ -11,42 +11,47 @@ import geemap
 
 
 def get_one_lst_image(date, out_dir : Path, golden_grid : GoldenGrid):
-    collection = (
-        ee.ImageCollection("MODIS/061/MOD11A2")
-        .filterBounds(golden_grid.aoi)
-        .filterDate(date, ee.Date(date).advance(8, 'day'))
-    )
-
-    image = collection.first()
-
-    if image is None:
-        raise ValueError(f"No image found for {date}")
-
-    lst = (
-        image.select("LST_Day_1km")
-        .multiply(0.02)
-        .subtract(273.15)
-        .reproject(crs=golden_grid.target_proj)
-    )
 
     # Build output path
-    output_path = out_dir / f'lst_{date}.tif'
-    
-    # Ensure the local folder exists before saving
-    output_path.parent.mkdir(parents=True, exist_ok=True) 
+    output_path = out_dir / f'{date}.tif'
 
-    geemap.ee_export_image(
-        lst,
-        filename=str(output_path),
-        scale=golden_grid.scale,
-        region=golden_grid.aoi,
-        crs=golden_grid.crs,
-        file_per_band=False,
-    )
+    if not output_path.exists():
+        collection = (
+            ee.ImageCollection("MODIS/061/MOD11A2")
+            .filterBounds(golden_grid.aoi)
+            .filterDate(date, ee.Date(date).advance(8, 'day'))
+        )
+
+        image = collection.first()
+
+        if image is None:
+            raise ValueError(f"No image found for {date}")
+
+        lst = (
+            image.select("LST_Day_1km")
+            .multiply(0.02)
+            .subtract(273.15)
+            .reproject(crs=golden_grid.target_proj)
+        )
+
+        
+        # Ensure the local folder exists before saving
+        output_path.parent.mkdir(parents=True, exist_ok=True) 
+
+        geemap.ee_export_image(
+            lst,
+            filename=str(output_path),
+            scale=golden_grid.scale,
+            region=golden_grid.aoi,
+            crs=golden_grid.crs,
+            file_per_band=False,
+        )
+    else:
+        print(f'Skipping step {date}. File already exists.')
     
     return None
 
-def download_yearly_lst(out_dir : Path, golden_grid : GoldenGrid):
+def download_lst(out_dir : Path, golden_grid : GoldenGrid):
   
     dates = golden_grid.dates
     date_strings = dates.strftime('%Y-%m-%d').tolist()
