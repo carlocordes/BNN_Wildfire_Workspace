@@ -99,7 +99,8 @@ class Dataset_Builder():
 
         static_base_paths = [
             Path(self.cfg_data['aspect']),
-            Path(self.cfg_data['slope']) # TODO: Add paths
+            Path(self.cfg_data['slope']),
+            Path(self.cfg_data['roads']) # TODO: Add paths
         ]
 
 

@@ -54,9 +54,7 @@ class DataDownloader():
         # Perform downloads to paths
         cfg_data_paths = cfg['data_paths']
         """
-        # MODIS LST
-        cfg_modis_path = Path(cfg_data_paths['processed']['LST'])
-        download_yearly_lst(cfg_modis_path, ggrid)
+
         """
         """      
         # DTM
@@ -67,9 +65,7 @@ class DataDownloader():
         cfg_burn_config = cfg_data_paths['raw']['target']
         ingest_burn_records(cfg_burn_config)
 
-        # MODIS NDVI (Normalized Difference Vegetation Index)
-        cfg_ndvi_path = Path(cfg_data_paths['processed']['NDVI'])
-        download_ndvi_catalogue(cfg_ndvi_path, ggrid)
+
 
 
         # ERA-5 wind
@@ -80,15 +76,21 @@ class DataDownloader():
                                      speed_dir = cfg_wind_speed_path,
                                      dir_v_dir = cfg_wind_comp_v_path,
                                      dir_u_dir = cfg_wind_comp_u_path)
-        
-        
+
+                                     
+
+        # MODIS NDVI (Normalized Difference Vegetation Index)
+        cfg_ndvi_path = Path(cfg_data_paths['processed']['NDVI'])
+        download_ndvi_catalogue(cfg_ndvi_path, ggrid)
+        """
+
 
         # MODIS LST
         out_path_LST = Path(cfg_data_paths['processed']['LST'])
         download_lst(out_dir=out_path_LST, golden_grid=ggrid)
-        """
 
-        # NDWI
+
+        # NDWI (Normalized Difference Water Index)
         out_path_NDWI = Path(cfg_data_paths['processed']['NDWI'])
         download_ndwi_catalogue(out_path = out_path_NDWI, golden_grid=ggrid)
 
