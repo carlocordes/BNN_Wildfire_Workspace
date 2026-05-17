@@ -8,6 +8,7 @@ from src.data.download.lst_modis import download_lst
 from src.data.download.era5_wind import download_era5_wind_catalogue
 from src.data.download.ndvi import download_ndvi_catalogue
 from src.data.download.ndwi import download_ndwi_catalogue
+from src.data.download.precip import download_rain_catalogue
 from src.data.download.burned_area import download_area_with_uncertainty
 
 
@@ -84,6 +85,9 @@ class DataDownloader():
         download_ndvi_catalogue(cfg_ndvi_path, ggrid)
         """
 
+        # CHIRPS Rain
+        out_path_precip = Path(cfg_data_paths['processed']['precip'])
+        download_rain_catalogue(out_path = out_path_precip, golden_grid=ggrid)
 
         # MODIS LST
         out_path_LST = Path(cfg_data_paths['processed']['LST'])

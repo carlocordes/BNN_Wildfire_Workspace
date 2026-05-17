@@ -11,69 +11,44 @@ def download_one_days_since_rain_image(
     golden_grid: GoldenGrid,
     out_path: Path
 ):
+    
+    days_window = 30
+
     fname = date + '.tif'
     file_path = out_path / fname
 
     if not file_path.exists():
-        out_path.mkdir(parents=True, exist_ok=True)
+        print(f'Gathering precipitation values for {date}')
 
+        # Define window
         target_date = ee.Date(date)
-        start_lookback = target_date.advance(-60, "day")
+        start_date = target_date.advance(-days_window, 'day')
 
-        chirps = (
-            ee.ImageCollection("UCSB-CHG/CHIRPS/DAILY")
-            .filterDate(start_lookback, target_date)
-            .filterBounds(golden_grid.aoi)
+        # Load filtered band
+        precip_col = ee.ImageCollection('UCSB-CHG/CHIRPS/DAILY') \
+            .filterDate(start_date, target_date) \
             .select('precipitation')
-        )
-
-        if chirps.size().getInfo() == 0:
-            print(f"No rainfall data found for {date}")
-            return
-
-        rain_threshold = 1.0
-
-        def calculate_days_since(img):
-            img_date = ee.Date(img.get('system:time_start'))
-            days_diff = target_date.difference(img_date, 'days')
-            is_rain = img.gte(rain_threshold)
-            return ee.Image(days_diff).updateMask(is_rain)
-
-        rain_days_collection = chirps.map(calculate_days_since)
         
-        # Reduce to find the minimum days since rain
-        days_since_rain = rain_days_collection.reduce(ee.Reducer.min())
 
-        # 1. Fill unmasked pixels with 60 (max lookback)
-        # 2. Force cast to Int32 so the exporter handles the data type properly
-        # 3. Explicitly set the output CRS and nominal scale to prevent export alignment errors
-        export_image = (
-            days_since_rain.unmask(60)
-            .toInt32()
-            .rename('days_since_rain')
-            .setDefaultProjection(crs=golden_grid.crs, scale=golden_grid.scale)
-            .clip(golden_grid.aoi)
-        )
+        # Sum images over time axis
+        total_precip_image = precip_col.sum()
 
-        print(f"Downloading days since rain for {date} to {out_path}...")
-        
+        # Download
         try:
             geemap.ee_export_image(
-                export_image,
+                ee_object=total_precip_image,
                 filename=str(file_path),
                 scale=golden_grid.scale,
-                region=golden_grid.aoi,
                 crs=golden_grid.crs,
+                region=golden_grid.aoi,
                 file_per_band=False
             )
+            print(f"Successfully downloaded: {file_path}")
         except Exception as e:
-            print(f"Failed downloading {date}: {e}")
-            if file_path.exists():
-                file_path.unlink()  # Clean up partial/corrupted files
+            print(f"Failed to download {date}. Error: {e}")
+
     else:
-        print('File already exists. Skipping.')
-
-
+        print(f"File already exists: {file_path}")
         
 def download_rain_catalogue(out_path: Path, golden_grid: GoldenGrid):
     date_strings = golden_grid.dates.strftime('%Y-%m-%d').tolist()
@@ -103,6 +78,7 @@ if __name__ == '__main__':
         day_interval = 1
     )
 
-    download_one_days_since_rain_image(date = '2024-08-01',
-                             golden_grid=portugal_ggrid,
-                             out_path=Path('data', 'processed', 'precip'))
+    download_rain_catalogue(
+        golden_grid=portugal_ggrid,
+        out_path=Path('data', 'processed', 'precip')
+    )
