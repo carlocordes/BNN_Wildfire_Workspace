@@ -44,14 +44,14 @@ class DataProcessor():
         # Perform processing to paths
         cfg_data_paths = cfg['data_paths']
         
-        """
+
         # Distance to roads
         cfg_raw_roads = Path(cfg_data_paths['raw']['roads'])
         cfg_raw_out = Path(cfg_data_paths['processed']['roads'])
         produce_roads_distance_image(in_path = cfg_raw_roads,
                                      out_dir=cfg_raw_out,
                                      golden_grid= ggrid)
-        """
+
         # Burn history from zarr
         cfg_raw_burn_history = Path(cfg_data_paths['raw']['target'])
         cfg_out_burn_history = Path(cfg_data_paths['processed']['burn_history'])
@@ -73,7 +73,7 @@ class DataProcessor():
         """
 
 
-        """
+
         ## Target
         print('Processing targets.')
 
@@ -85,7 +85,7 @@ class DataProcessor():
                       out_path_target = cfg_processed_target,
                       target_extent = cfg_target_extent)
 
-        """
+
 
         # Add other processes here
         #

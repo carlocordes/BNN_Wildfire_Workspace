@@ -49,18 +49,20 @@ def download_one_modis_ndwi_image(
         ndwi = ndwi.updateMask(cloud_mask)
 
         print(f"Downloading NDWI for {date} to {out_path}...")
+        
+        geemap.ee_export_image(
+            ndwi,
+            filename=str(file_path),
+            scale=golden_grid.scale,
+            region=golden_grid.aoi,
+            crs=golden_grid.crs,
+            file_per_band=False
+        )
+
 
     else:
         print('File already exists. Skipping.')
 
-    geemap.ee_export_image(
-        ndwi,
-        filename=str(file_path),
-        scale=golden_grid.scale,
-        region=golden_grid.aoi,
-        crs=golden_grid.crs,
-        file_per_band=False
-    )
 
 
 def download_ndwi_catalogue(out_path: Path, golden_grid: GoldenGrid):

@@ -54,9 +54,7 @@ class DataDownloader():
 
         # Perform downloads to paths
         cfg_data_paths = cfg['data_paths']
-        """
 
-        """
         """      
         # DTM
         cfg_dtm_path = Path(cfg_data_paths["raw"]['elevation'])
@@ -83,7 +81,7 @@ class DataDownloader():
         # MODIS NDVI (Normalized Difference Vegetation Index)
         cfg_ndvi_path = Path(cfg_data_paths['processed']['NDVI'])
         download_ndvi_catalogue(cfg_ndvi_path, ggrid)
-        """
+
 
         # CHIRPS Rain
         out_path_precip = Path(cfg_data_paths['processed']['precip'])
@@ -92,7 +90,7 @@ class DataDownloader():
         # MODIS LST
         out_path_LST = Path(cfg_data_paths['processed']['LST'])
         download_lst(out_dir=out_path_LST, golden_grid=ggrid)
-
+        """
 
         # NDWI (Normalized Difference Water Index)
         out_path_NDWI = Path(cfg_data_paths['processed']['NDWI'])
