@@ -203,8 +203,8 @@ if __name__ == '__main__':
     latmin, longmin = 36.812, -9.490
     latmax, longmax = 42.2724, -6.0234
 
-    start_date = '2015-01-01'
-    end_date = '2026-12-31'
+    start_date = '2023-01-01'
+    end_date = '2026-01-09'
 
     portugal_ggrid = GoldenGrid(
         crs = 'EPSG:3763',
@@ -217,5 +217,5 @@ if __name__ == '__main__':
 
     download_area_with_uncertainty(
         golden_grid = portugal_ggrid, 
-        out_path = Path('data', 'raw', 'target_alt')
+        out_path = Path('data', 'raw', 'target_zarr')
     )

@@ -91,7 +91,10 @@ class Dataset_Builder():
             Path(self.cfg_data['NDVI']),
             Path(self.cfg_data['wind_speed']),
             Path(self.cfg_data['wind_dir_v']),
-            Path(self.cfg_data['wind_dir_u'])
+            Path(self.cfg_data['wind_dir_u']),
+            Path(self.cfg_data['NDWI']),
+            Path(self.cfg_data['precip']),
+            Path(self.cfg_data['LST'])
         ]
 
         target_base_path = Path(self.cfg_data['target']) # TODO: Switch to other ground truth
@@ -109,6 +112,7 @@ class Dataset_Builder():
         for key, timeframes in self.timeframes.items():
             sample_tensors = []
             target_tensors = []
+            #single_dynamic-tensors = [] # NEW list here
             for timeframe in timeframes: 
                 try:
                     channel_sample_tensors = []
@@ -131,6 +135,9 @@ class Dataset_Builder():
                         channel_sample_tensors.append(channel_sample_data)
 
                     sequence_sample_data = torch.stack(channel_sample_tensors, dim=0)
+                    
+
+                    # --- Single dynamic --- #
                     
 
                     # --- TARGET ---
@@ -159,6 +166,7 @@ class Dataset_Builder():
 
             sample_data = torch.stack(sample_tensors, dim = 0)
             target_data = torch.stack(target_tensors, dim = 0)
+            # stack here
 
 
             static_tensors = []
@@ -178,10 +186,12 @@ class Dataset_Builder():
                 'dynamic' : sample_data,
                 'static' : static_data,
                 'target' : target_data,
+                # append single dynamic here
+                # append uncertainty here
             }
 
             print(f"Produced dataset {dataset_name} with {tensors_dict['static'].shape[0]} static " \
-                f"and {tensors_dict['dynamic'].shape[1]} with {tensors_dict['dynamic'].shape[2]} timesteps each")
+                f"and {tensors_dict['dynamic'].shape[1]} dynamic with {tensors_dict['dynamic'].shape[2]} timesteps each")
             
             ## Save
             out_path = out_dir / f'{dataset_name}_{key}_ds.pt'

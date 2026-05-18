@@ -121,10 +121,18 @@ if __name__ == '__main__':
     )
 
     zarr_path = Path('data', 'raw', 'target_zarr')
-    target_date = datetime(2024, 8, 1)
-
+    target_date = datetime(2025, 8, 1)
+    """
     process_burn_history_catalogue(
         zarr_path=zarr_path,
         golden_grid= portugal_ggrid,
         out_path=Path('data', 'processed', 'burn_history')
+    )"""
+
+
+    get_dates_since_last_burn(
+        zarr_path=zarr_path,
+        golden_grid= portugal_ggrid,
+        target_date='2025-08-01',
+        out_path = Path('data', 'raw', 'test')
     )

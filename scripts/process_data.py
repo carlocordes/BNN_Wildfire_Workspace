@@ -44,7 +44,7 @@ class DataProcessor():
         # Perform processing to paths
         cfg_data_paths = cfg['data_paths']
         
-
+        """
         # Distance to roads
         cfg_raw_roads = Path(cfg_data_paths['raw']['roads'])
         cfg_raw_out = Path(cfg_data_paths['processed']['roads'])
@@ -59,7 +59,7 @@ class DataProcessor():
                                        out_path=cfg_out_burn_history,
                                        golden_grid=ggrid)
 
-        """
+
         
         # DTM derivatives
         print('Processing derivatives of digital terrain model')
