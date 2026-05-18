@@ -70,7 +70,7 @@ class DataDownloader():
                                      dir_v_dir = cfg_wind_comp_v_path,
                                      dir_u_dir = cfg_wind_comp_u_path)
 
-
+        """
         # MODIS NDVI (Normalized Difference Vegetation Index)
         cfg_ndvi_path = Path(cfg_data_paths['processed']['NDVI'])
         download_ndvi_catalogue(cfg_ndvi_path, ggrid)
@@ -94,7 +94,7 @@ class DataDownloader():
         download_area_with_uncertainty(golden_grid=ggrid,
                                        out_path=cfg_raw_target)
 
-
+        """
         print('Completed Download')
 
 

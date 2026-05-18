@@ -92,8 +92,8 @@ class Dataset_Builder():
             Path(self.cfg_data['wind_speed']),
             Path(self.cfg_data['wind_dir_v']),
             Path(self.cfg_data['wind_dir_u']),
-            #Path(self.cfg_data['NDWI']),
-            #Path(self.cfg_data['LST'])
+            Path(self.cfg_data['NDWI']),
+            Path(self.cfg_data['LST'])
         ]
 
         target_base_path = Path(self.cfg_data['target']) # TODO: Switch to other ground truth
@@ -209,8 +209,8 @@ class Dataset_Builder():
                 # append uncertainty here
             }
 
-            for key, value in tensors_dict.items():
-                print(f'{key} has shape: {value.shape}')
+            for s, value in tensors_dict.items():
+                print(f'{s} has shape: {value.shape}')
 
             print(f"Produced dataset {dataset_name} with {tensors_dict['static'].shape[0]} static " \
                 f"and {tensors_dict['dynamic'].shape[1]} dynamic with {tensors_dict['dynamic'].shape[2]} timesteps each")
