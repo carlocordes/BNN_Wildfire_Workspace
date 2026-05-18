@@ -184,7 +184,10 @@ class STViT(nn.Module):
         pos_embed = torch.cat([torch.sin(out_y), torch.cos(out_y), torch.sin(out_x), torch.cos(out_x)], dim=-1)
         return pos_embed.flatten(0, 1).unsqueeze(0)
 
-    def forward(self, x_static, x_dynamic, return_tokens = False):
+    def forward(self, x_static, x_dynamic, x_single_dynamic, return_tokens = False):
+
+        # Cat static channels together
+        x_static = torch.cat([x_static, x_single_dynamic], dim = 1)
 
         ## Pad input to be divisible by patch size via reflect method
         # Pad static (4D): (B, C, H, W) -> (B, C, H+pad_h, W+pad_w)

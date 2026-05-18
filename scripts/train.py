@@ -21,6 +21,7 @@ class WildfireDataset(Dataset):
     def __init__(self, data_dict):
         self.static = data_dict['static']
         self.dynamic = data_dict['dynamic']
+        self.single_dynamic = data_dict['single_dynamic']
         self.target = data_dict['target']
 
     def __len__(self):
@@ -30,17 +31,20 @@ class WildfireDataset(Dataset):
         return {
             'static' : self.static,
             'dynamic' : self.dynamic[idx],
+            'single_dynamic' : self.single_dynamic[idx],
             'target' : self.target[idx]
         }
 
 
 # Dataset-info
 def get_dataset_parameters(dataset : str):
-    logging.info(f"Loaded dataset with {dataset['static'].shape[0]} static "\
+    logging.info(f"Loaded dataset with {dataset['static'].shape[0]} static, "\
+                 f"{dataset['single_dynamic'].shape[1]} single dynamic channels " \
                  f"and {dataset['dynamic'].shape[1]} with {dataset['dynamic'].shape[2]} timesteps each")
     return {
         'num_static_channels' : dataset['static'].shape[0],
         'num_dynamic_channels' : dataset['dynamic'].shape[1],
+        'num_single_dynamic_channels' : dataset['single_dynamic'].shape[1],
         'num_timestamps_per_sample' : dataset['dynamic'].shape[2]
     }
 
@@ -109,7 +113,8 @@ def load_dataset_dict(path_to_ds: Path):
     chunks = {
         "static": None, # We'll store the first one we find
         "dynamic": [],
-        "target": []
+        "target": [],
+        "single_dynamic" : []
     }
     
     # Use .pt or .pth (torch.load doesn't usually use .json)
@@ -122,7 +127,7 @@ def load_dataset_dict(path_to_ds: Path):
             chunks["static"] = file_content.get("static")
         
         # 2. Collect chunks for concatenation
-        for key in ["dynamic", "target"]:
+        for key in ["dynamic", "target", 'single_dynamic']:
             if key in file_content:
                 chunks[key].append(file_content[key])
 
@@ -130,13 +135,14 @@ def load_dataset_dict(path_to_ds: Path):
     return {
         "static": chunks["static"],
         "dynamic": torch.cat(chunks["dynamic"], dim=0) if chunks["dynamic"] else None,
-        "target": torch.cat(chunks["target"], dim=0) if chunks["target"] else None
+        "target": torch.cat(chunks["target"], dim=0) if chunks["target"] else None,
+        "single_dynamic" : torch.cat(chunks['single_dynamic'], dim = 0) if chunks['single_dynamic'] else None
     }
 
 # Model
 def build_model(cfg_model, device, ds_info):
     model = STViT(
-        num_static_channels = ds_info['num_static_channels'],
+        num_static_channels = ds_info['num_static_channels'] + ds_info['num_single_dynamic_channels'],
         num_dynamic_channels = ds_info['num_dynamic_channels'],
         num_timestamps_per_sample = ds_info['num_timestamps_per_sample'],
         patch_size = cfg_model['patch_size'],
@@ -157,13 +163,15 @@ def evaluate(model, loss_fn, dataloader, device):
 
             # Get data
             static_x = batch['static'].to(device)
+            single_dynamic_x = batch['single_dynamic'].to(device)
             dynamic_x = batch['dynamic'].to(device)
             targets = batch['target'].to(device)
 
             # Predict
             preds = model(
                 x_static=static_x,
-                x_dynamic=dynamic_x
+                x_dynamic=dynamic_x,
+                x_single_dynamic = single_dynamic_x
             )
 
             # Get loss
@@ -208,11 +216,16 @@ def train(model, loss_fn,
             
             # Get data
             static_x = batch['static'].to(device)
+            single_dynamic_x = batch['single_dynamic'].to(device)
             dynamic_x = batch['dynamic'].to(device)
             targets = batch['target'].to(device)
 
             # Predict
-            preds = model(x_static=static_x, x_dynamic=dynamic_x)
+            preds = model(
+                x_static=static_x,
+                x_dynamic=dynamic_x, 
+                x_single_dynamic = single_dynamic_x
+            )
 
             # Calculate loss
             loss = loss_fn(preds, targets)
@@ -351,6 +364,7 @@ def main(config_path: Path, dataset_path: str, experiment_path: Path):
 
     # Close the TensorBoard writer
     writer.close()
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
