@@ -148,9 +148,10 @@ class STViT(nn.Module):
 
 
         # Cross-Attention block
+        num_fusion_blocks = 16
         self.module_fusion = nn.ModuleList([
             FusionBlock(embedding_dim, 8)
-            for _ in range(6)
+            for _ in range(num_fusion_blocks)
         ])
 
         # Decoder

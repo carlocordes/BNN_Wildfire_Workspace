@@ -29,10 +29,10 @@ def count_parameters_per_module(model):
 
 if __name__ == '__main__':
     model = STViT(
-        num_static_channels=3,
-        num_dynamic_channels=4,
+        num_static_channels=6,
+        num_dynamic_channels=7,
         num_timestamps_per_sample=10,
-        patch_size=16,
+        patch_size=8,
         embedding_dim=128
     )
 
