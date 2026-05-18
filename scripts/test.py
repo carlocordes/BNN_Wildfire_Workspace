@@ -7,7 +7,16 @@ from src.core.utils import load_config
 from src.core.systempaths import MODELS, DATASETS
 from src.models.vit.vit import STViT
 from scripts.train import WildfireDataset
-from scripts.train import build_dataloader
+from torch.utils.data import DataLoader
+
+def build_dataloader(data_dict, cfg_training):
+
+    dataset = WildfireDataset(data_dict)
+    return DataLoader(
+        dataset,
+        batch_size=cfg_training["batch_size"],
+        shuffle=False # Dont shuffle chronological data
+    )
 
 # External
 import argparse
@@ -28,8 +37,8 @@ def main(model_path: Path, dataset_path: Path, config_path: Path):
     # Load model
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = STViT(
-        num_dynamic_channels=4,
-        num_static_channels=3,
+        num_dynamic_channels=6,
+        num_static_channels=6,
         num_timestamps_per_sample=10,
         patch_size=cfg_model['patch_size'],
         embedding_dim=cfg_model['embedding_dim']
@@ -42,55 +51,94 @@ def main(model_path: Path, dataset_path: Path, config_path: Path):
     dataset_dict = torch.load(dataset_path, weights_only=False)
     dataloader = build_dataloader(dataset_dict, cfg_training)
 
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 6))
-    frames = []  # List to store artists for each frame
-
-    print("Generating frames...")
+    # --- 1. Extract and process data batches first ---
+    print("Extracting evaluation batches...")
+    batches = []
     with torch.no_grad():
         for batch_idx, batch in enumerate(dataloader):
-            # Limit frames if dataset is huge (optional)
             if batch_idx > 50: 
                 break
-
+            
             static_x = batch['static'].to(device)
             dynamic_x = batch['dynamic'].to(device)
             targets = batch['target'].to(device)
+            single_dynamic = batch['single_dynamic'].to(device)
 
-            logits = model(static_x, dynamic_x)
+            logits = model(static_x, dynamic_x, single_dynamic)
             prediction = torch.sigmoid(logits).squeeze().cpu().numpy()
             target = targets.squeeze().cpu().numpy()
-
-            # Plot both images
-            # Note: add_axes=False and using the return of imshow to create a list of artists
-            im1 = ax1.imshow(prediction, cmap='magma', animated=True)
-            im2 = ax2.imshow(target, cmap='magma', animated=True)
             
-            # Add text labels as artists so they update/persist correctly in the GIF
-            txt1 = ax1.text(0.5, 1.05, f'Prediction (Batch {batch_idx})', 
-                            transform=ax1.transAxes, ha="center", color="black", fontsize=12)
-            txt2 = ax2.text(0.5, 1.05, f'Target (Batch {batch_idx})', 
-                            transform=ax2.transAxes, ha="center", color="black", fontsize=12)
+            batches.append((prediction, target, batch_idx))
 
-            frames.append([im1, im2, txt1, txt2])
+    # Ensure we actually have data before proceeding
+    if not batches:
+        raise ValueError("The dataloader returned no samples.")
 
-    # Clean up axes
+    # --- 2. Dynamic Aspect Ratio Setup ---
+    # Grab the real spatial shape from the very first processed frame
+    sample_prediction = batches[0][0]
+    height, width = sample_prediction.shape  # Dynamic height and width
+
+    # Dynamically adjust the figure size so rectangular tensors don't stretch weirdly
+    # We give width a bit more padding since there are 2 subplots side by side
+    aspect_ratio = width / height
+    fig_height = 6
+    fig_width = fig_height * aspect_ratio * 2.2  
+    
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(fig_width, fig_height))
+    
+    # Initialize the plots using the real sample shape instead of a hardcoded 64x64 square
+    import numpy as np
+    init_data = np.zeros((height, width)) 
+    
+    # aspect='equal' ensures pixels remain perfectly square even if the whole tensor is rectangular
+    im1 = ax1.imshow(init_data, cmap='magma', vmin=0, vmax=1, aspect='equal')
+    im2 = ax2.imshow(init_data, cmap='magma', vmin=0, vmax=1, aspect='equal')
+    
     ax1.axis('off')
     ax2.axis('off')
+    
+    title1 = ax1.set_title('Prediction (Batch 0)', fontsize=12)
+    title2 = ax2.set_title('Target (Batch 0)', fontsize=12)
 
-    # Create the animation
-    # interval=1000 means 1000ms (1 second) per frame
-    ani = animation.ArtistAnimation(fig, frames, interval=1000, blit=True, repeat_delay=1000)
+    # Universal color bar setup
+    cbar = fig.colorbar(im1, ax=[ax1, ax2], orientation='horizontal', pad=0.1, shrink=0.5)
+    cbar.set_label('Wildfire Probability / Intensity')
+
+    # --- 3. Animation Update Function ---
+    def update(frame_idx):
+        prediction, target, batch_idx = batches[frame_idx]
+        
+        im1.set_data(prediction)
+        im2.set_data(target)
+        
+        title1.set_text(f'Prediction (Batch {batch_idx})')
+        title2.set_text(f'Target (Batch {batch_idx})')
+        
+        return im1, im2, title1, title2
+
+    print("Generating GIF frames...")
+    ani = animation.FuncAnimation(
+        fig, 
+        update, 
+        frames=len(batches), 
+        interval=100, 
+        blit=True
+    )
 
     output_filename = "prediction_results.gif"
     print(f"Saving GIF to {output_filename}...")
     ani.save(output_filename, writer='pillow')
+    plt.close(fig) 
     print("Done.")
+
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Visualize model predictions and save to GIF')
-    parser.add_argument("--model", type=str, required=True)
-    parser.add_argument("--dataset", type=str, required=True)
-    parser.add_argument("--config", type=str, required=True)
+    parser.add_argument("--model", type=Path, required=True)
+    parser.add_argument("--dataset", type=Path, required=True)
+    parser.add_argument("--config", type=Path, required=True)
     args = parser.parse_args()
     
     main(model_path=Path(args.model), dataset_path=Path(args.dataset), config_path=Path(args.config))

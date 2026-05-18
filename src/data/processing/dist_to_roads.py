@@ -67,17 +67,35 @@ def produce_roads_distance_image(in_path : Path, out_dir : Path, golden_grid : G
 
     distance_pixels = distance_transform_edt(road_mask == 0)
     distance_meters = distance_pixels * golden_grid.scale
-
+    """
     # Cap maximum distance (so values over water do not inflate)
     distance_meters = np.clip(
         distance_meters, 
         a_min = 0,
         a_max = max_distance
     )
-    
+    """
+
+    # Load binary water map
+    path_to_water_binary = Path('data', 'resources', 'binary_water_projected.tif')
+    with rasterio.open(path_to_water_binary) as src:
+        binary_water = src.read(1)
+
+    # Mask ocean
+    #distance_meters = np.where(binary_water == 0, distance_meters, 1.0)
+
+    # Create proximity
+    land_max = np.max(distance_meters[binary_water == 0])
+    land_min = 0.0
+
+    proximity = (land_max - distance_meters) / (land_max - land_min)
+
+    # Force ocean to -1
+    proximity_masked = np.where(binary_water == 0, proximity, -1.0)
+
     # Save output
     out_dir.mkdir(parents=True, exist_ok=True)
-    out_path = out_dir / "road_distance.tif"
+    out_path = out_dir / "proximity.tif"
 
     with rasterio.open(
         out_path,
@@ -86,12 +104,13 @@ def produce_roads_distance_image(in_path : Path, out_dir : Path, golden_grid : G
         height=raster_height,
         width=raster_width,
         count=1,
+        nodata=-1.0,
         dtype=np.float32,
         crs=golden_grid.crs,
         transform=transform,
         compress="lzw"
     ) as dst:
-        dst.write(distance_meters.astype(np.float32), 1)
+        dst.write(proximity_masked.astype(np.float32), 1)
 
     print(f"Saved: {out_path}")
 

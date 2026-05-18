@@ -51,10 +51,18 @@ def slope_map(dtm, transform, profile, path_out: Path):
     slope = np.arctan(np.sqrt(dz_dx**2 + dz_dy**2))
 
     # Normalize to [0,1]
-    slope = slope / (np.pi / 2)
+    slope = slope / np.max(slope)
+
+    ## Mask with ocean
+    # Load binary water map
+    path_to_water_binary = Path('data', 'resources', 'binary_water_projected.tif')
+    with rasterio.open(path_to_water_binary) as src:
+        binary_water = src.read(1)
+
+    slope = np.where(binary_water == 0, slope, -1.0)
 
     profile = profile.copy()
-    profile.update(dtype="float32", count=1, compress="lzw")
+    profile.update(dtype="float32", count=1, compress="lzw", nodata = -1.0)
 
     # Ensure output directory exists
     path_out.mkdir(parents=True, exist_ok=True)
@@ -85,8 +93,26 @@ def aspect_map(dtm, transform, profile, path_out: Path):
     aspect_ns = np.sin(aspect)
     aspect_ew = np.cos(aspect)
 
+
+    ## Masking
+
+    max_val = np.max(aspect_ns)
+    min_val = np.min(aspect_ew)
+
+    aspect_ns_norm = (max_val - aspect_ns) / (max_val - min_val)
+    aspect_ew_norm = (max_val - aspect_ew) / (max_val - min_val)
+
+    # Load binary water map
+    path_to_water_binary = Path('data', 'resources', 'binary_water_projected.tif')
+    with rasterio.open(path_to_water_binary) as src:
+        binary_water = src.read(1)
+
+    aspect_ns_masked = np.where(binary_water == 0, aspect_ns_norm, -1.0)
+    aspect_ew_masked = np.where(binary_water == 0, aspect_ew_norm, -1.0)
+
+
     profile = profile.copy()
-    profile.update(dtype="float32", count=1, compress="lzw")
+    profile.update(dtype="float32", count=1, compress="lzw", nodata = -1.0)
 
     # Ensure output directory exists
     path_out.mkdir(parents=True, exist_ok=True)
@@ -95,10 +121,10 @@ def aspect_map(dtm, transform, profile, path_out: Path):
     ew_file = path_out / "aspect_EW.tif"
 
     with rasterio.open(ns_file, "w", **profile) as dst:
-        dst.write(aspect_ns.astype(np.float32), 1)
+        dst.write(aspect_ns_masked.astype(np.float32), 1)
 
     with rasterio.open(ew_file, "w", **profile) as dst:
-        dst.write(aspect_ew.astype(np.float32), 1)
+        dst.write(aspect_ew_masked.astype(np.float32), 1)
 
 
 if __name__ == '__main__':
@@ -117,7 +143,7 @@ if __name__ == '__main__':
         day_interval=1
     )
 
-    path_to_dtm = Path('data', 'processed', 'elevation', 'dtm.tif')
+    path_to_dtm = Path('data', 'raw', 'elevation')
 
     dtm_derivatives(
         golden_grid=portugal_ggrid,
