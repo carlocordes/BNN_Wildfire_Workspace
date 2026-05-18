@@ -93,7 +93,6 @@ class Dataset_Builder():
             Path(self.cfg_data['wind_dir_v']),
             Path(self.cfg_data['wind_dir_u']),
             Path(self.cfg_data['NDWI']),
-            Path(self.cfg_data['precip']),
             Path(self.cfg_data['LST'])
         ]
 
@@ -106,13 +105,18 @@ class Dataset_Builder():
             Path(self.cfg_data['roads']) # TODO: Add paths
         ]
 
+        dynamic_single_base_paths = [
+            Path(self.cfg_data['burn_history']),
+            Path(self.cfg_data['precip']),
+        ]
+
 
         ## Load dynamic data
 
         for key, timeframes in self.timeframes.items():
             sample_tensors = []
             target_tensors = []
-            #single_dynamic-tensors = [] # NEW list here
+            single_dynamic_tensors = [] # NEW list here
             for timeframe in timeframes: 
                 try:
                     channel_sample_tensors = []
@@ -138,7 +142,20 @@ class Dataset_Builder():
                     
 
                     # --- Single dynamic --- #
-                    
+                    time_single_dynamic_tensors = []
+
+                    first_time_of_target = timeframe['target'][0]
+                    for path in dynamic_single_base_paths:
+                        fp = path / f"{first_time_of_target}.tif"
+                        with rasterio.open(fp) as src:
+                            img = torch.from_numpy(src.read(1)).float()
+                            time_single_dynamic_tensors.append(img)
+
+                    single_dynamic_data = torch.stack(time_single_dynamic_tensors, dim = 0)
+
+
+
+
 
                     # --- TARGET ---
                     time_target_tensors = []
@@ -159,6 +176,8 @@ class Dataset_Builder():
                     sample_tensors.append(sequence_sample_data)
                     target_tensors.append(time_target_data)
 
+                    single_dynamic_tensors.append(single_dynamic_data)
+
                 except FileNotFoundError as e:
                     print(f"Skipping timeframe due to missing data: {e}")
                     continue
@@ -166,7 +185,7 @@ class Dataset_Builder():
 
             sample_data = torch.stack(sample_tensors, dim = 0)
             target_data = torch.stack(target_tensors, dim = 0)
-            # stack here
+            single_dynamic_data = torch.stack(single_dynamic_tensors, dim = 0)
 
 
             static_tensors = []
@@ -195,7 +214,7 @@ class Dataset_Builder():
             
             ## Save
             out_path = out_dir / f'{dataset_name}_{key}_ds.pt'
-            torch.save(obj = tensors_dict, f = out_path)
+            #torch.save(obj = tensors_dict, f = out_path)
             print(f'Saved to {out_path}')
 
 
