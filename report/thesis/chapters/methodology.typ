@@ -253,6 +253,11 @@ It is of course possible to make predictions for every patch. This is however no
 #todo(stroke : green)[Update with final params]
 
 == Training Routine
+The setup of the training regiment of models is crucial as without certain guidelines, the model could make faulty predictions. The most important vocabulary in this regard is #emph[overfitting] and #emph[generalization]. Generalization describes the ability of the model to transfer its learned patterns from training data to previsously unseen data. This showcases the ability to concretely learn the physical underlying the data, rather than simply memorizing it. A model is said to be overfitting, if the prediction results rely on the training data including all its inaccuracies and noise rather than actual representation of data. The training routine used herein caters to both of these issues. As a guide, @algo:training shows the pseudo-code implementation of the training regiment. 
+
+To promote generalization of a trained model, we use a train-validation-test split of 70-15-15 respectively. These are the proportions the dataset is split into at the beginning of training. An imporant note here is that the neither of the subsets of the data are shuffled, which usually is standard for such training processes. This 
+
+
 #figure(
   kind: "algorithm",
   supplement: [Algorithm],
@@ -260,21 +265,26 @@ It is of course possible to make predictions for every patch. This is however no
   pseudocode-list[
     + *Input:* Load dataset, initialize dataloader, move to GPU
     + Initialize loss function, optimizer, model from config
-    + $"epoch_loss" = 0$
+    + Split data (70/15/15) into training- validation- and testing sets
+    + $"best_loss" = infinity$
     + *for* eopoch in num_epochs:
-      + *for* batch in dataloader:
+      + $"train_loss" = 0$
+      + *for* batch in train_data:
         + *Predict* for batches given static & dynamic inputs
         + Compute *losses* based on WBCE, predictions & *ground truth*
         + Set *optimizer* gradients to zero
         + Backward pass
         + Update *weights*
-        + $"epoch_loss" += "loss"$
-      + if epoch_loss <= best_loss:
-        + Save *model*
+        + $"train_loss" += "batch_loss"$
+      + Compute: *validation loss* on validation dataset
+      + *if* validation_loss < best loss:
+        + best_loss = validation_loss
+        + *Save model*
+      + *if* no improvement for 15 epochs:
+        + *break*
+      + Compute: test loss on test dataset
   ]
-)
-#todo(stroke : green)[Update with validation workflow]
-
+) <algo:training>
 
 
 === Loss Function
