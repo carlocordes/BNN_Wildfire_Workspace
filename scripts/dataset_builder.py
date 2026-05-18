@@ -144,9 +144,9 @@ class Dataset_Builder():
                     # --- Single dynamic --- #
                     time_single_dynamic_tensors = []
 
-                    first_time_of_target = timeframe['target'][0]
+                    last_time_of_sample = timeframe['sample'][-1]
                     for path in dynamic_single_base_paths:
-                        fp = path / f"{first_time_of_target}.tif"
+                        fp = path / f"{last_time_of_sample}.tif"
                         with rasterio.open(fp) as src:
                             img = torch.from_numpy(src.read(1)).float()
                             time_single_dynamic_tensors.append(img)
