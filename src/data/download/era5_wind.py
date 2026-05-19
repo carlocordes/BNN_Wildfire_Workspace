@@ -19,7 +19,6 @@ def download_era5_wind(date,
     dir_v_dir.mkdir(parents=True, exist_ok=True)
     dir_u_dir.mkdir(parents=True, exist_ok=True)
 
-
     start = ee.Date(date)
     end = start.advance(1, "day")
     
@@ -69,13 +68,24 @@ def download_era5_wind_catalogue(golden_grid : GoldenGrid,
                                  dir_u_dir : Path):
     date_strings = golden_grid.dates.strftime('%Y-%m-%d').tolist()
     for date in date_strings:
-        download_era5_wind(
-            date = date,
-            golden_grid = golden_grid,
-            speed_dir = speed_dir,
-            dir_v_dir = dir_v_dir,
-            dir_u_dir = dir_u_dir
-        )
+
+        
+        # Check if exists
+        speed_file = speed_dir / f'{date}.tif'
+        v_file = dir_v_dir / f'{date}.tif'
+        u_file = dir_u_dir / f'{date}.tif'
+
+        if not (speed_file.exists() and v_file.exists() and u_file.exists()):
+            
+            download_era5_wind(
+                date = date,
+                golden_grid = golden_grid,
+                speed_dir = speed_dir,
+                dir_v_dir = dir_v_dir,
+                dir_u_dir = dir_u_dir
+            )
+        else:
+            print(f'Files already downloaded for date {date}')
 
 if __name__ == '__main__':
     # Define local golden grid

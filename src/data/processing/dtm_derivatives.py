@@ -148,6 +148,6 @@ if __name__ == '__main__':
     dtm_derivatives(
         golden_grid=portugal_ggrid,
         path_to_dtm=path_to_dtm,
-        path_to_aspect=Path('data', 'test', 'aspect'),
-        path_to_slope=Path('data', 'test', 'slope')
+        path_to_aspect=Path('data', 'processed', 'aspect'),
+        path_to_slope=Path('data', 'processed', 'slope')
     )

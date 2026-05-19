@@ -60,11 +60,11 @@ class DataDownloader():
         cfg_dtm_path = Path(cfg_data_paths["raw"]['elevation'])
         get_one_dtm_image(cfg_dtm_path, ggrid)
         """
-        """
+
         # ERA-5 wind
-        cfg_wind_speed_path = Path(cfg_data_paths['processed']['wind_speed'])
-        cfg_wind_comp_u_path = Path(cfg_data_paths['processed']['wind_dir_u'])
-        cfg_wind_comp_v_path = Path(cfg_data_paths['processed']['wind_dir_v'])
+        cfg_wind_speed_path = Path(cfg_data_paths['raw']['wind_speed'])
+        cfg_wind_comp_u_path = Path(cfg_data_paths['raw']['wind_dir_u'])
+        cfg_wind_comp_v_path = Path(cfg_data_paths['raw']['wind_dir_v'])
         download_era5_wind_catalogue(golden_grid = ggrid,
                                      speed_dir = cfg_wind_speed_path,
                                      dir_v_dir = cfg_wind_comp_v_path,
@@ -72,20 +72,20 @@ class DataDownloader():
         
 
         # MODIS NDVI (Normalized Difference Vegetation Index)
-        cfg_ndvi_path = Path(cfg_data_paths['processed']['NDVI'])
+        cfg_ndvi_path = Path(cfg_data_paths['raw']['NDVI'])
         download_ndvi_catalogue(cfg_ndvi_path, ggrid)
 
-
+        """
         # CHIRPS Rain
-        out_path_precip = Path(cfg_data_paths['processed']['precip'])
+        out_path_precip = Path(cfg_data_paths['raw']['precip'])
         download_rain_catalogue(out_path = out_path_precip, golden_grid=ggrid)
-
+        """
         # MODIS LST
-        out_path_LST = Path(cfg_data_paths['processed']['LST'])
+        out_path_LST = Path(cfg_data_paths['raw']['LST'])
         download_lst(out_dir=out_path_LST, golden_grid=ggrid)
-
+        """
         # NDWI (Normalized Difference Water Index)
-        out_path_NDWI = Path(cfg_data_paths['processed']['NDWI'])
+        out_path_NDWI = Path(cfg_data_paths['raw']['NDWI'])
         download_ndwi_catalogue(out_path = out_path_NDWI, golden_grid=ggrid)
         """
         """
@@ -95,6 +95,8 @@ class DataDownloader():
         download_area_with_uncertainty(golden_grid=ggrid,
                                        out_path=cfg_raw_target)
         """
+
+
         print('Completed Download')
 
 

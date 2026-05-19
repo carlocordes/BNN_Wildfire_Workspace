@@ -63,11 +63,16 @@ def download_ndvi_catalogue(out_path : Path, golden_grid : GoldenGrid):
     date_strings = golden_grid.dates.strftime('%Y-%m-%d').tolist()
 
     for date in date_strings:
-        download_one_modis_ndvi_image(
-            date = date,
-            golden_grid = golden_grid,
-            out_path = out_path
-        )
+
+        out_file = out_path / f'{date}.tif'
+        if not out_file.exists():
+            download_one_modis_ndvi_image(
+                date = date,
+                golden_grid = golden_grid,
+                out_path = out_path
+            )
+        else:
+            print(f'NDVI file alredy exists for date {date} at {out_path}')
 
 if __name__ == '__main__':
 
