@@ -68,7 +68,7 @@ def get_dates_since_last_burn(
         transform = src.transform
         data_profile = src.profile
     """
-    path_to_water_binary = Path('data', 'resources', 'binary_water_projected.tif')
+    path_to_water_binary = Path('files', 'data', 'resources', 'binary_water_projected.tif')
     with rasterio.open(path_to_water_binary) as water_src:
         water_data = water_src.read(1)
 

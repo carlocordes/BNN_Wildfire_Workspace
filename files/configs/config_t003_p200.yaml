@@ -8,7 +8,7 @@ data:
   scale: 1000 # meters
 
   temporal_extent:
-    start_date: "202-01-01"
+    start_date: "2023-01-01"
     end_date: "2025-12-31"
     day_interval: 1
 
@@ -54,7 +54,7 @@ data_paths:
     NDVI : 'files/data/raw/NDVI'
     NDWI : 'files/data/raw/NDWI'
 
-    precip : 'files/data/processed/precip'
+    precip : 'files/data/raw/precip'
 
     DTM : 'files/data/raw/elevation'
     roads : 'files/data/raw/roads'

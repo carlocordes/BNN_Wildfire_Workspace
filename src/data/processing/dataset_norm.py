@@ -59,7 +59,7 @@ def normalize_dataset(input_dataset : Path, output_dataset : Path, mask = True):
 
         if mask == True:
             print('Masking with binary water mask...')
-            path_to_water_binary = Path('data', 'resources', 'binary_water_projected.tif')
+            path_to_water_binary = Path('files', 'data', 'resources', 'binary_water_projected.tif')
 
             with rasterio.open(path_to_water_binary) as water_src:
                 aligned_water = np.zeros(data.shape, dtype=water_src.dtypes[0])

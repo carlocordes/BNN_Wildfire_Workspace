@@ -59,7 +59,7 @@ class DataDownloader():
         # DTM
         cfg_dtm_path = Path(cfg_data_paths["raw"]['elevation'])
         get_one_dtm_image(cfg_dtm_path, ggrid)
-        """
+
 
         # ERA-5 wind
         cfg_wind_speed_path = Path(cfg_data_paths['raw']['wind_speed'])
@@ -75,27 +75,26 @@ class DataDownloader():
         cfg_ndvi_path = Path(cfg_data_paths['raw']['NDVI'])
         download_ndvi_catalogue(cfg_ndvi_path, ggrid)
 
-        """
+
         # CHIRPS Rain
         out_path_precip = Path(cfg_data_paths['raw']['precip'])
         download_rain_catalogue(out_path = out_path_precip, golden_grid=ggrid)
-        """
+
         # MODIS LST
         out_path_LST = Path(cfg_data_paths['raw']['LST'])
         download_lst(out_dir=out_path_LST, golden_grid=ggrid)
-        """
+
         # NDWI (Normalized Difference Water Index)
         out_path_NDWI = Path(cfg_data_paths['raw']['NDWI'])
         download_ndwi_catalogue(out_path = out_path_NDWI, golden_grid=ggrid)
         """
-        """
+
+
         # New targets
         print('Downloading Targets')
         cfg_raw_target = Path(cfg_data_paths['raw']['target'])
         download_area_with_uncertainty(golden_grid=ggrid,
                                        out_path=cfg_raw_target)
-        """
-
 
         print('Completed Download')
 
