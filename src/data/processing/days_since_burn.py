@@ -10,13 +10,15 @@ from rasterio.transform import from_origin, from_bounds
 from rasterio.warp import transform_bounds
 import xarray as xr
 from pathlib import Path
+from rasterio import warp
 
 def get_dates_since_last_burn(
     zarr_path: Path,
     golden_grid,
     target_date: str,
     out_path: Path,
-    nodata: int = 9999
+    nodata: int = -1,
+    max_value: int = 7300 # 20 years
 ):
     """
     Creates a GeoTIFF where each pixel contains:
@@ -47,19 +49,36 @@ def get_dates_since_last_burn(
 
     # Get days indices for every pixel
     last_fire_index = burn_indices.max(dim='time')
-
     days_since = target_index - last_fire_index
 
-    # Case handling: pixels never burned
+
+    # Set pixels that never burned to max_value
     ever_burned = ds_historical.burn.any(dim='time')
-    days_since = days_since.where(ever_burned, nodata)
+    days_since_capped = days_since.where(ever_burned, max_value).clip(max=max_value)
 
-    # Cast to int and get values
-    raster_data = days_since.values.astype(np.int16)
+    normalized_days = days_since_capped / max_value
+    raster_data = normalized_days.values.astype(np.float32)
 
+
+    ## Mask ocean to -1
+    """ 
+    # Load dtm for profile
+    dtm_path = Path('files', 'data', 'raw', 'elevation', 'dtm.tif')
+    with rasterio.open(dtm_path) as src:
+        transform = src.transform
+        data_profile = src.profile
+    """
+    path_to_water_binary = Path('data', 'resources', 'binary_water_projected.tif')
+    with rasterio.open(path_to_water_binary) as water_src:
+        water_data = water_src.read(1)
+
+    flipped_water_data = water_data[::-1, :]
+
+    # Mask by raster 
+    raster_data_masked = np.where(flipped_water_data == 0, raster_data, nodata)
 
     # Dimension handling
-    height, width = raster_data.shape
+    height, width = raster_data_masked.shape
     west_4326, south_4326, east_4326, north_4326 = golden_grid.bbox
     west, south, east, north = transform_bounds(
         src_crs="EPSG:4326",
@@ -80,15 +99,15 @@ def get_dates_since_last_burn(
         'height': height,
         'width': width,
         'count': 1,                  
-        'dtype': rasterio.int16,
+        'dtype': rasterio.float32,
         'crs': golden_grid.crs,      
         'transform': transform,
-        'nodata': nodata,
+        'nodata': nodata, # set new nodata value
         'compress': 'lzw'            
     }
 
     with rasterio.open(fname, 'w', **meta) as dst:
-        dst.write(raster_data, 1) 
+        dst.write(raster_data_masked, 1) 
 
     print(f'Wrote burn raster for {target_date} to {out_path}')   
 
@@ -120,19 +139,20 @@ if __name__ == '__main__':
         day_interval=1
     )
 
-    zarr_path = Path('data', 'raw', 'target_zarr')
+    zarr_path = Path('files', 'data', 'raw', 'target_zarr')
     target_date = datetime(2025, 8, 1)
-    """
+
     process_burn_history_catalogue(
         zarr_path=zarr_path,
         golden_grid= portugal_ggrid,
-        out_path=Path('data', 'processed', 'burn_history')
-    )"""
-
-
+        out_path=Path('files', 'data', 'test', 'burn_history')
+    )
+    
+    """
     get_dates_since_last_burn(
         zarr_path=zarr_path,
         golden_grid= portugal_ggrid,
         target_date='2025-08-01',
         out_path = Path('data', 'raw', 'test')
     )
+    """
