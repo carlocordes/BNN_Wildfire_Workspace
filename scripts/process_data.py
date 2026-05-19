@@ -8,6 +8,8 @@ from src.data.processing.days_since_burn import process_burn_history_catalogue
 
 from src.data.processing.targets_from_zarr import produce_targets
 
+from src.data.processing.dataset_norm import normalize_dataset
+
 # External
 import argparse
 from pathlib import Path
@@ -70,7 +72,7 @@ class DataProcessor():
                         path_to_dtm = cfg_data_dtm,
                         path_to_aspect = cfg_data_aspect,
                         path_to_slope = cfg_data_slope)
-        """
+
 
 
 
@@ -84,13 +86,57 @@ class DataProcessor():
                       in_path = cfg_raw_target,
                       out_path_target = cfg_processed_target,
                       target_extent = cfg_target_extent)
-
+        """
 
 
         # Add other processes here
         #
         #
         #
+
+
+        ## Dataset Normalization
+        print('Normalizing and masking datasets.')
+
+        """
+        # MODIS LST
+        cfg_lst_in = Path(cfg_data_paths['raw']['LST'])
+        cfg_lst_out = Path(cfg_data_paths['processed']['LST'])
+        normalize_dataset(input_dataset=cfg_lst_in, output_dataset=cfg_lst_out)
+
+
+        # NDVI
+        cfg_ndvi_in = Path(cfg_data_paths['raw']['NDVI'])
+        cfg_ndvi_out = Path(cfg_data_paths['processed']['NDVI'])
+        normalize_dataset(input_dataset=cfg_ndvi_in, output_dataset=cfg_ndvi_out)
+
+
+        # NDWI
+        cfg_ndwi_in = Path(cfg_data_paths['raw']['NDWI'])
+        cfg_ndwi_out = Path(cfg_data_paths['processed']['NDWI'])
+        normalize_dataset(input_dataset=cfg_ndwi_in, output_dataset=cfg_ndwi_out)
+
+
+        # CHIRPS precipitation
+        cfg_precip_in = Path(cfg_data_paths['raw']['precip'])
+        cfg_precip_out = Path(cfg_data_paths['processed']['precip'])
+        normalize_dataset(input_dataset=cfg_precip_in, output_dataset=cfg_precip_out)
+
+
+        # Wind 
+        cfg_wspeed_in = Path(cfg_data_paths['raw']['wind_speed'])
+        cfg_wspeed_out = Path(cfg_data_paths['processed']['wind_speed'])
+        normalize_dataset(input_dataset=cfg_wspeed_in, output_dataset=cfg_wspeed_out)
+
+        cfg_wu_in = Path(cfg_data_paths['raw']['wind_dir_u'])
+        cfg_wu_out = Path(cfg_data_paths['processed']['wind_dir_v'])
+        normalize_dataset(input_dataset=cfg_wu_in, output_dataset=cfg_wu_out)
+        """
+
+        cfg_wv_in = Path(cfg_data_paths['raw']['wind_dir_v'])
+        cfg_wv_out = Path(cfg_data_paths['processed']['wind_dir_v'])
+        normalize_dataset(input_dataset=cfg_wv_in, output_dataset=cfg_wv_out)
+
 
 def main(config_path: Path):
     downloader = DataProcessor(config_path)
