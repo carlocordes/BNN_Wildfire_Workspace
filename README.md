@@ -44,15 +44,15 @@ Running larger datasets on larger model in two variants
 
 ### Download data:
 ```
-docker run -v "$(pwd)"/files:/app/files:Z wildfire-model python scripts/s3_data_download.py dir --s3_path datasets/t002_dataset --local_dest files/datasets/
+docker run -v "$(pwd)"/files:/app/files:Z wildfire-model python scripts/s3_data_download.py dir --s3_path datasets/t003 --local_dest files/datasets/
 ```
 
 ### Patch size = 16: 
 ```
-docker run  --device nvidia.com/gpu=all -v "$(pwd)"/files:/app/files:Z wildfire-model python main.py --config config_t002_patch16.yaml --dataset t002_dataset --exp_name t002_p16 --auto_upload
+docker run  --device nvidia.com/gpu=all -v "$(pwd)"/files:/app/files:Z wildfire-model python main.py --config config_t003_p200.yaml --dataset t003 --exp_name t003_pos200 --auto_upload
 ```
 
-### Patch size = 8
+### pos weight = 4000
 ```
-docker run  --device nvidia.com/gpu=all -v "$(pwd)"/files:/app/files:Z wildfire-model python main.py --config config_t002_patch8.yaml --dataset t002_dataset --exp_name t002_p8 --auto_upload
+docker run  --device nvidia.com/gpu=all -v "$(pwd)"/files:/app/files:Z wildfire-model python main.py --config config_t003_p4000.yaml --dataset t003 --exp_name t003_pos4000 --auto_upload
 ```
