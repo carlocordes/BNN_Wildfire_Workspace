@@ -10,7 +10,8 @@ RUN pip install --no-cache-dir \
     "python-dotenv>=1.0.0" \
     "tensorboard>=2.20.0" \
     "torchvision==0.24.1" \
-    "omegaconf>=2.3.0"
+    "omegaconf>=2.3.0" \
+    "geopandas>=1.1.2"
 
 # Copy your files
 COPY src/ ./src/
