@@ -146,6 +146,7 @@ class Dataset_Builder():
             single_dynamic_tensors = []
             static_tensors = []
             for timeframe in batch: 
+                print('Start date: ', timeframe['sample'][0])
                 try:
                     channel_sample_tensors = []
 
@@ -207,34 +208,35 @@ class Dataset_Builder():
                     print(f"Skipping timeframe due to missing data: {e}")
                     continue
 
+            if sample_tensors and single_dynamic_tensors:
 
-            sample_data = torch.stack(sample_tensors, dim = 0)
-            target_data = torch.stack(target_tensors, dim = 0)
-            single_dynamic_data = torch.stack(single_dynamic_tensors, dim = 0)
-            static_data = torch.stack(static_tensors, dim = 0)
+                sample_data = torch.stack(sample_tensors, dim = 0)
+                target_data = torch.stack(target_tensors, dim = 0)
+                single_dynamic_data = torch.stack(single_dynamic_tensors, dim = 0)
+                static_data = torch.stack(static_tensors, dim = 0)
 
 
-            ## Concat
-            tensors_dict = {
-                'dynamic' : sample_data,
-                'static' : static_data,
-                'target' : target_data,
-                'single_dynamic' : single_dynamic_data
-                # append uncertainty here
-            }
-            """
-            for s, value in tensors_dict.items():
-                print(f'{s} has shape: {value.shape}')
-            """
+                ## Concat
+                tensors_dict = {
+                    'dynamic' : sample_data,
+                    'static' : static_data,
+                    'target' : target_data,
+                    'single_dynamic' : single_dynamic_data
+                    # append uncertainty here
+                }
+                """
+                for s, value in tensors_dict.items():
+                    print(f'{s} has shape: {value.shape}')
+                """
 
-            yield tensors_dict
+                yield tensors_dict
 
 
 def main(config_path : Path, dataset_name : str, year_split):
     dataset = Dataset_Builder(config_path, year_split)
 
 
-    for batch in dataset.get_batches_from_dataset('val_frames'):
+    for batch in dataset.get_batches_from_dataset('train_frames'):
         for type, tensor in batch.items():
             print(type, ' : ', tensor.shape)
 
