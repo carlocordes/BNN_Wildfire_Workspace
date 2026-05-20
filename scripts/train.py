@@ -284,7 +284,7 @@ def train(model, loss_fn,
 # ----------------------------
 # Main
 # ----------------------------
-def main(config_path: Path, dataset_path: str, experiment_path: Path):
+def main(config_path: Path, experiment_path: Path):
     
     # --- Setup Logging Directory and File ----
     exp_name = experiment_path.stem
@@ -315,7 +315,6 @@ def main(config_path: Path, dataset_path: str, experiment_path: Path):
 
 
     # ---- Load Data ----
-    logging.info(f"Loading dataset from: {dataset_path}")
     dataset = Dataset_Builder(config_path = config_path)
 
 
@@ -372,13 +371,11 @@ def main(config_path: Path, dataset_path: str, experiment_path: Path):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--config_path", type=Path, required=True)
-    parser.add_argument("--dataset_path", type=Path, required=True)
     parser.add_argument("--experiment_path", type=Path, required=True)
 
     args = parser.parse_args()
     main(experiment_path=args.experiment_path,
-         config_path=args.config_path,
-         dataset_path=args.dataset_path)
+         config_path=args.config_path)
 
     # Example usage:
     # uv run -m scripts.train --config configs/project.yaml --datasetname test.pt

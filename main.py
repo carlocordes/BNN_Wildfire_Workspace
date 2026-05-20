@@ -26,7 +26,7 @@ def get_s3_client():
         aws_secret_access_key=config.get('SECRET_KEY'),
     )
 
-def main(config : str, dataset : str, exp_name : str, upload : bool):
+def main(config : str, exp_name : str, upload : bool):
     """
     ## 1. Retrieve dataset
     s3_path = 'test_sets/small.pt' # 'alpha/small.pt'
@@ -37,7 +37,6 @@ def main(config : str, dataset : str, exp_name : str, upload : bool):
 
     ## 2. Set up experiment structure
     path_to_config = OUTPUT_FOLDER / 'configs' / config
-    path_to_dataset = OUTPUT_FOLDER / 'datasets' / dataset
     
     output_dir = OUTPUT_FOLDER / 'experiments' / exp_name
     print(f'output dir:', output_dir)
@@ -46,7 +45,6 @@ def main(config : str, dataset : str, exp_name : str, upload : bool):
         output_dir.mkdir(parents = True, exist_ok = False) # Define output dir
         # 3. Train
         run_training(config_path=path_to_config,
-                    dataset_path=path_to_dataset,
                     experiment_path=output_dir)
         print(f'Results were stored to {output_dir}')
 
@@ -74,11 +72,6 @@ if __name__ == '__main__':
                         type=str,
                         help='Name of config in files/configs/',
                         required=True)
-    parser.add_argument('--dataset',
-                        type=str,
-                        help='Name of dataset in files/datasets',
-                        required=True
-                        )
     parser.add_argument('--exp_name',
                         type=str,
                         help='Output name of experiment',
@@ -88,6 +81,5 @@ if __name__ == '__main__':
                         help='Upload results if flag is present')
     args = parser.parse_args()
     main(config = args.config,
-         dataset = args.dataset,
          exp_name = args.exp_name,
          upload = args.auto_upload)
