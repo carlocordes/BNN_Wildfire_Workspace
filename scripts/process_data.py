@@ -53,7 +53,7 @@ class DataProcessor():
         produce_roads_distance_image(in_path = cfg_raw_roads,
                                      out_dir=cfg_raw_out,
                                      golden_grid= ggrid)
-        """
+
         # Burn history from zarr
         cfg_raw_burn_history = Path(cfg_data_paths['raw']['target'])
         cfg_out_burn_history = Path(cfg_data_paths['processed']['burn_history'])
@@ -61,8 +61,7 @@ class DataProcessor():
                                        out_path=cfg_out_burn_history,
                                        golden_grid=ggrid)
 
-        """
-        
+
         # DTM derivatives
         print('Processing derivatives of digital terrain model')
         cfg_data_dtm = Path(cfg_data_paths['raw']['DTM'])
@@ -97,7 +96,6 @@ class DataProcessor():
 
         ## Dataset Normalization
         print('Normalizing and masking datasets.')
-
         """
         # MODIS LST
         cfg_lst_in = Path(cfg_data_paths['raw']['LST'])
@@ -121,7 +119,7 @@ class DataProcessor():
         cfg_precip_in = Path(cfg_data_paths['raw']['precip'])
         cfg_precip_out = Path(cfg_data_paths['processed']['precip'])
         normalize_dataset(input_dataset=cfg_precip_in, output_dataset=cfg_precip_out)
-
+        """
 
         # Wind 
         cfg_wspeed_in = Path(cfg_data_paths['raw']['wind_speed'])
@@ -129,14 +127,13 @@ class DataProcessor():
         normalize_dataset(input_dataset=cfg_wspeed_in, output_dataset=cfg_wspeed_out)
 
         cfg_wu_in = Path(cfg_data_paths['raw']['wind_dir_u'])
-        cfg_wu_out = Path(cfg_data_paths['processed']['wind_dir_v'])
+        cfg_wu_out = Path(cfg_data_paths['processed']['wind_dir_u'])
         normalize_dataset(input_dataset=cfg_wu_in, output_dataset=cfg_wu_out)
 
 
         cfg_wv_in = Path(cfg_data_paths['raw']['wind_dir_v'])
         cfg_wv_out = Path(cfg_data_paths['processed']['wind_dir_v'])
         normalize_dataset(input_dataset=cfg_wv_in, output_dataset=cfg_wv_out)
-        """
 
 def main(config_path: Path):
     downloader = DataProcessor(config_path)
