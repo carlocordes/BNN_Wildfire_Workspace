@@ -114,7 +114,7 @@ class Dataset_Builder():
 
         static_base_paths = [
             Path(self.cfg_data['aspect']), # 2x in here
-            #Path(self.cfg_data['slope']),
+            Path(self.cfg_data['slope']),
             Path(self.cfg_data['roads']) # TODO: Add paths
         ]
 
@@ -124,14 +124,28 @@ class Dataset_Builder():
         ]
 
 
+        # Pre-load static data ONCE
+        static_channels = []
+        for path in static_base_paths:
+            tif_files = glob.glob(str(path) + '/*.tif')
+
+            for fp in tif_files:
+
+                with rasterio.open(fp) as src:
+                    img = torch.from_numpy(src.read(1)).float()
+                    static_channels.append(img)
+
+        base_static_tensor = torch.stack(static_channels, dim = 0)
+
+
         ## Load dynamic data
         #print(len(target_dataset))
         for batch in target_dataset:
             sample_tensors = []
             target_tensors = []
             single_dynamic_tensors = []
+            static_tensors = []
             for timeframe in batch: 
-                print(timeframe['sample'][0])
                 try:
                     channel_sample_tensors = []
 
@@ -185,6 +199,7 @@ class Dataset_Builder():
                     # Only append if everything succeeded
                     sample_tensors.append(sequence_sample_data)
                     target_tensors.append(time_target_data)
+                    static_tensors.append(base_static_tensor)
 
                     single_dynamic_tensors.append(single_dynamic_data)
 
@@ -196,19 +211,8 @@ class Dataset_Builder():
             sample_data = torch.stack(sample_tensors, dim = 0)
             target_data = torch.stack(target_tensors, dim = 0)
             single_dynamic_data = torch.stack(single_dynamic_tensors, dim = 0)
-
-
-            static_tensors = []
-            for path in static_base_paths:
-                tif_files = glob.glob(str(path) + '/*.tif')
-
-                for fp in tif_files:
-
-                    with rasterio.open(fp) as src:
-                        img = torch.from_numpy(src.read(1)).float()
-                        static_tensors.append(img)
-
             static_data = torch.stack(static_tensors, dim = 0)
+
 
             ## Concat
             tensors_dict = {
@@ -230,9 +234,9 @@ def main(config_path : Path, dataset_name : str, year_split):
     dataset = Dataset_Builder(config_path, year_split)
 
 
-    for batch in dataset.get_batches_from_dataset('train_frames'):
+    for batch in dataset.get_batches_from_dataset('val_frames'):
         for type, tensor in batch.items():
-            print(tensor.shape)
+            print(type, ' : ', tensor.shape)
 
 
 
