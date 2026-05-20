@@ -113,8 +113,8 @@ class Dataset_Builder():
 
 
         static_base_paths = [
-            Path(self.cfg_data['aspect']),
-            Path(self.cfg_data['slope']),
+            Path(self.cfg_data['aspect']), # 2x in here
+            #Path(self.cfg_data['slope']),
             Path(self.cfg_data['roads']) # TODO: Add paths
         ]
 
@@ -231,7 +231,8 @@ def main(config_path : Path, dataset_name : str, year_split):
 
 
     for batch in dataset.get_batches_from_dataset('train_frames'):
-        print(batch['dynamic'].shape)
+        for type, tensor in batch.items():
+            print(tensor.shape)
 
 
 
