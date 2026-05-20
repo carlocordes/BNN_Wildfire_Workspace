@@ -38,7 +38,7 @@ docker run -v "$(pwd)"/files:/app/files wildfire-model python scripts.s3_data_up
 
 ### Download data:
 ```
-docker run -v "$(pwd)"/files:/app/files:Z wildfire-model python scripts/s3_data_download.py dir --s3_path datasets/t003 --local_dest files/datasets/
+docker run -v "$(pwd)"/files:/app/files:Z wildfire-model python scripts/s3_data_download.py dir --s3_path datasets/t004 --local_dest files/datasets/
 ```
 ### 1
 ```
