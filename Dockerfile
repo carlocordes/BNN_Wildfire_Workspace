@@ -11,7 +11,8 @@ RUN pip install --no-cache-dir \
     "tensorboard>=2.20.0" \
     "torchvision==0.24.1" \
     "omegaconf>=2.3.0" \
-    "geopandas>=1.1.2"
+    "geopandas>=1.1.2" \
+    "rasterio<=1.4"
 
 # Copy your files
 COPY src/ ./src/
