@@ -2,6 +2,8 @@
 from src.core.utils import load_config
 from src.models.vit.vit import STViT
 
+from scripts.dataset_builder import Dataset_Builder
+
 #External
 from pathlib import Path
 import json
@@ -140,18 +142,18 @@ def load_dataset_dict(path_to_ds: Path):
     }
 
 # Model
-def build_model(cfg_model, device, ds_info):
+def build_model(cfg_model, cfg_data, device):
     model = STViT(
-        num_static_channels = ds_info['num_static_channels'] + ds_info['num_single_dynamic_channels'],
-        num_dynamic_channels = ds_info['num_dynamic_channels'],
-        num_timestamps_per_sample = ds_info['num_timestamps_per_sample'],
+        num_static_channels = cfg_model['num_static_channels'] + cfg_model['num_single_dynamic_channels'],
+        num_dynamic_channels = cfg_model['num_dynamic_channels'],
+        num_timestamps_per_sample = cfg_data['temporal_extent']['sample_extent'],
         patch_size = cfg_model['patch_size'],
         embedding_dim = cfg_model['embedding_dim']
     )
     return model.to(device)
 
 # Evaluation
-def evaluate(model, loss_fn, dataloader, device):
+def evaluate(model, loss_fn, dataset : Dataset_Builder, mode, device):
 
     model.eval()
 
@@ -159,7 +161,7 @@ def evaluate(model, loss_fn, dataloader, device):
 
     with torch.no_grad():
 
-        for batch in dataloader:
+        for batch in dataset.get_batches_from_dataset(mode):
 
             # Get data
             static_x = batch['static'].to(device)
@@ -178,7 +180,7 @@ def evaluate(model, loss_fn, dataloader, device):
             loss = loss_fn(preds, targets)
             total_loss += loss.item()
 
-    avg_loss = total_loss / len(dataloader) # Sum
+    avg_loss = total_loss / (len(dataset.val_frames) * dataset.batch_size) # Sum
 
     model.train() # Back to train mode
 
@@ -186,7 +188,7 @@ def evaluate(model, loss_fn, dataloader, device):
 
 # Training
 def train(model, loss_fn,
-          train_dataloader, val_dataloader, test_dataloader, 
+          dataset : Dataset_Builder, 
           cfg_training, device, writer, model_save_path):
     
     # Optimizer
@@ -208,7 +210,7 @@ def train(model, loss_fn,
     for epoch in range(cfg_training['num_epochs']):
         epoch_loss = 0.0
 
-        for batch_idx, batch in enumerate(train_dataloader):
+        for batch_idx, batch in enumerate(dataset.get_batches_from_dataset("train_frames")):
             
             logging.info(f'Epoch {epoch+1} | '
                 f'Processing batch {batch_idx}'
@@ -236,12 +238,13 @@ def train(model, loss_fn,
 
             epoch_loss += loss.item()
 
-        train_loss = epoch_loss / len(train_dataloader)
+        train_loss = epoch_loss / (len(dataset.train_frames) * dataset.batch_size)
 
         # Validate
         val_loss = evaluate(model = model,
                             loss_fn = loss_fn,
-                            dataloader = val_dataloader,
+                            dataset = dataset,
+                            mode = "val_frames",
                             device = device)
 
         # Log and TensorBoard
@@ -281,7 +284,7 @@ def train(model, loss_fn,
 # ----------------------------
 # Main
 # ----------------------------
-def main(config_path: Path, dataset_path: str, experiment_path: Path):
+def main(config_path: Path, experiment_path: Path):
     
     # --- Setup Logging Directory and File ----
     exp_name = experiment_path.stem
@@ -303,6 +306,7 @@ def main(config_path: Path, dataset_path: str, experiment_path: Path):
     # ---- Load config ----
     cfg = load_config(config_path)
     cfg_model = cfg["model"]
+    cfg_data = cfg["data"]
     cfg_training = cfg["training"]
     logging.info(f'Using config file from: {config_path}')
 
@@ -311,15 +315,13 @@ def main(config_path: Path, dataset_path: str, experiment_path: Path):
 
 
     # ---- Load Data ----
-    logging.info(f"Loading dataset from: {dataset_path}")
-    dataset_dict = load_dataset_dict(dataset_path)
+    dataset = Dataset_Builder(config_path = config_path)
+
 
 
     # ---- Build components ----
-    train_dataloader, val_dataloader, test_dataloader = build_dataloaders(dataset_dict, cfg_training)
-    ds_info = get_dataset_parameters(dataset_dict)
 
-    model = build_model(cfg_model, device, ds_info)
+    model = build_model(cfg_model = cfg_model, cfg_data = cfg_data, device = device)
 
     loss_fn = nn.BCEWithLogitsLoss(pos_weight=torch.Tensor([cfg_training["pos_weight"]])).to(device)
 
@@ -328,17 +330,16 @@ def main(config_path: Path, dataset_path: str, experiment_path: Path):
     experiment_path.mkdir(exist_ok=True)
     model_save_path = experiment_path / f"{exp_name}_model_best.pt"
 
-
     # ---- Train ----
     train(model = model,
           loss_fn = loss_fn,
-          train_dataloader = train_dataloader,
-          val_dataloader = val_dataloader,
-          test_dataloader = test_dataloader,
+          dataset = dataset,
           cfg_training = cfg_training,
           device = device,
           writer = writer,
           model_save_path = model_save_path)
+
+    
 
     # Final test
     model.load_state_dict(
@@ -353,7 +354,8 @@ def main(config_path: Path, dataset_path: str, experiment_path: Path):
     test_loss = evaluate(
         model = model,
         loss_fn = loss_fn,
-        dataloader = test_dataloader,
+        mode = "test_frames",
+        dataset=dataset,
         device = device
     )
 
@@ -369,13 +371,11 @@ def main(config_path: Path, dataset_path: str, experiment_path: Path):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--config_path", type=Path, required=True)
-    parser.add_argument("--dataset_path", type=Path, required=True)
     parser.add_argument("--experiment_path", type=Path, required=True)
 
     args = parser.parse_args()
     main(experiment_path=args.experiment_path,
-         config_path=args.config_path,
-         dataset_path=args.dataset_path)
+         config_path=args.config_path)
 
     # Example usage:
     # uv run -m scripts.train --config configs/project.yaml --datasetname test.pt

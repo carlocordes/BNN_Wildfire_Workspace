@@ -20,11 +20,18 @@ class Dataset_Builder():
         # Load config
         self.cfg = OmegaConf.load(self.config_path)
         self.cfg_data = self.cfg['data_paths']['processed']
+
+        self.batch_size = self.cfg['training']['batch_size']
+
+        self.train_size = self.cfg['training']['train_size']
+        self.val_size = self.cfg['training']['val_size']
+        self.test_size = self.cfg['training']['test_size']
+
         cfg_temporal = self.cfg['data']['temporal_extent']
 
-        self.timeframes = self.get_timeframes(cfg_temporal = cfg_temporal, year_split = year_split)
+        self.train_frames, self.val_frames, self.test_frames = self.produce_batched_timeframes(cfg_temporal = cfg_temporal)
 
-    def get_timeframes(self, cfg_temporal, year_split):
+    def produce_batched_timeframes(self, cfg_temporal):
         # Build timeframes
         sequence_extent = cfg_temporal['sample_extent'] + cfg_temporal['target_extent'] + cfg_temporal['lead_time'] # Length of entire sequence
         
@@ -37,9 +44,7 @@ class Dataset_Builder():
         num_sequences = (testing_extent - sequence_extent) // cfg_temporal['sequence_period'] + 1
         #print(f'Number of sequences: {num_sequences}')
 
-        # Structure for storing sequences
-        years_list = list(range(start_date.year, end_date.year +1))
-        sequences = {year : [] for year in years_list}
+        sequences = []
 
         for i in range(num_sequences):
             current_sequence = {}
@@ -65,26 +70,34 @@ class Dataset_Builder():
                 'target' : target,
             }
 
-            # Append to sequence dict
-            current_year = int(sample_start_date.year)
-            sequences[current_year].append(current_sequence)
+            sequences.append(current_sequence)
 
+        # Split into proportions
+        n = len(sequences)
 
-        if year_split:
-            return sequences
-        else:
-            # Flatten into one
-            sequences_combined = {'all' : [item for sublist in sequences.values() for item in sublist]}
-            return sequences_combined
+        idx1 = round(n * self.train_size)
+        idx2 = round(n * (1.0 - self.val_size))
 
-    def build(self, dataset_name : str):
+        train_frames = sequences[:idx1]
+        val_frames = sequences[idx1:idx2]
+        test_frames = sequences[idx2:]
 
-        ## Prepare out paths
-        if len(self.timeframes) > 1:
-            out_dir = Path(self.cfg['data_sets']['path']) / dataset_name
-            out_dir.mkdir(parents = True, exist_ok = True)
-        else:
-            out_dir = Path(self.cfg['data_sets']['path'])
+        assert((len(train_frames) + len(val_frames) + len(test_frames)) == n)
+
+        train_frames_batched = [train_frames[i : i + self.batch_size] for i in range(0, len(train_frames), self.batch_size)]
+        val_frames_batched = [val_frames[i : i + self.batch_size] for i in range(0, len(val_frames), self.batch_size)]
+        test_frames_batched = [test_frames[i : i + self.batch_size] for i in range(0, len(test_frames), self.batch_size)]
+
+        return train_frames_batched, val_frames_batched, test_frames_batched
+
+    def get_batches_from_dataset(self, dataset_type):
+
+        # Select list to yield
+        target_dataset = getattr(self, dataset_type, None)
+
+        if target_dataset is None:
+            raise ValueError(f"Category '{dataset_type}' does not exist.")
+
 
         ## Define source paths
         sample_base_paths = [           
@@ -100,7 +113,7 @@ class Dataset_Builder():
 
 
         static_base_paths = [
-            Path(self.cfg_data['aspect']),
+            Path(self.cfg_data['aspect']), # 2x in here
             Path(self.cfg_data['slope']),
             Path(self.cfg_data['roads']) # TODO: Add paths
         ]
@@ -111,13 +124,28 @@ class Dataset_Builder():
         ]
 
 
-        ## Load dynamic data
+        # Pre-load static data ONCE
+        static_channels = []
+        for path in static_base_paths:
+            tif_files = glob.glob(str(path) + '/*.tif')
 
-        for key, timeframes in self.timeframes.items():
+            for fp in tif_files:
+
+                with rasterio.open(fp) as src:
+                    img = torch.from_numpy(src.read(1)).float()
+                    static_channels.append(img)
+
+        base_static_tensor = torch.stack(static_channels, dim = 0)
+
+
+        ## Load dynamic data
+        #print(len(target_dataset))
+        for batch in target_dataset:
             sample_tensors = []
             target_tensors = []
-            single_dynamic_tensors = [] # NEW list here
-            for timeframe in timeframes: 
+            single_dynamic_tensors = []
+            static_tensors = []
+            for timeframe in batch: 
                 try:
                     channel_sample_tensors = []
 
@@ -153,10 +181,6 @@ class Dataset_Builder():
 
                     single_dynamic_data = torch.stack(time_single_dynamic_tensors, dim = 0)
 
-
-
-
-
                     # --- TARGET ---
                     time_target_tensors = []
 
@@ -175,6 +199,7 @@ class Dataset_Builder():
                     # Only append if everything succeeded
                     sample_tensors.append(sequence_sample_data)
                     target_tensors.append(time_target_data)
+                    static_tensors.append(base_static_tensor)
 
                     single_dynamic_tensors.append(single_dynamic_data)
 
@@ -186,19 +211,8 @@ class Dataset_Builder():
             sample_data = torch.stack(sample_tensors, dim = 0)
             target_data = torch.stack(target_tensors, dim = 0)
             single_dynamic_data = torch.stack(single_dynamic_tensors, dim = 0)
-
-
-            static_tensors = []
-            for path in static_base_paths:
-                tif_files = glob.glob(str(path) + '/*.tif')
-
-                for fp in tif_files:
-
-                    with rasterio.open(fp) as src:
-                        img = torch.from_numpy(src.read(1)).float()
-                        static_tensors.append(img)
-
             static_data = torch.stack(static_tensors, dim = 0)
+
 
             ## Concat
             tensors_dict = {
@@ -208,24 +222,22 @@ class Dataset_Builder():
                 'single_dynamic' : single_dynamic_data
                 # append uncertainty here
             }
-
+            """
             for s, value in tensors_dict.items():
                 print(f'{s} has shape: {value.shape}')
+            """
 
-            print(f"Produced dataset {dataset_name} with {tensors_dict['static'].shape[0]} static " \
-                f"and {tensors_dict['dynamic'].shape[1]} dynamic with {tensors_dict['dynamic'].shape[2]} timesteps each")
-            
-            ## Save
-            out_path = out_dir / f'{dataset_name}_{key}_ds.pt'
-            torch.save(obj = tensors_dict, f = out_path)
-            print(f'Saved to {out_path}')
-
+            yield tensors_dict
 
 
 def main(config_path : Path, dataset_name : str, year_split):
     dataset = Dataset_Builder(config_path, year_split)
-    dataset.build(dataset_name)
-    
+
+
+    for batch in dataset.get_batches_from_dataset('val_frames'):
+        for type, tensor in batch.items():
+            print(type, ' : ', tensor.shape)
+
 
 
 if __name__ == '__main__':
