@@ -42,21 +42,21 @@ docker run -v "$(pwd)"/files:/app/files:Z wildfire-model python scripts/s3_data_
 ```
 ### 1
 ```
-docker run  --device nvidia.com/gpu=all -v "$(pwd)"/files:/app/files:Z wildfire-model python main.py --config config_t004_samp10_emb128.yaml --exp_name t004_s10_e128 --auto_upload
+docker run  --device nvidia.com/gpu=all --ipc=host -v "$(pwd)"/files:/app/files:Z wildfire-model python main.py --config config_t004_samp10_emb128.yaml --exp_name t004_s10_e128 --auto_upload
 ```
 
 ### 2
 ```
-docker run  --device nvidia.com/gpu=all -v "$(pwd)"/files:/app/files:Z wildfire-model python main.py --config config_t004_samp10_emb256.yaml --exp_name t004_s10_e256 --auto_upload
+docker run  --device nvidia.com/gpu=all --ipc=host -v "$(pwd)"/files:/app/files:Z wildfire-model python main.py --config config_t004_samp10_emb256.yaml --exp_name t004_s10_e256 --auto_upload
 ```
 
 
 ### 3
 ```
-docker run  --device nvidia.com/gpu=all -v "$(pwd)"/files:/app/files:Z wildfire-model python main.py --config config_t004_samp20_emb128.yaml --exp_name t004_s20_e128--auto_upload
+docker run  --device nvidia.com/gpu=all --ipc=host -v "$(pwd)"/files:/app/files:Z wildfire-model python main.py --config config_t004_samp20_emb128.yaml --exp_name t004_s20_e128 --auto_upload
 ```
 
 ### 4
 ```
-docker run  --device nvidia.com/gpu=all -v "$(pwd)"/files:/app/files:Z wildfire-model python main.py --config config_t004_samp20_emb256.yaml  --exp_name t004_s20_e256 --auto_upload
+docker run  --device nvidia.com/gpu=all --ipc=host -v "$(pwd)"/files:/app/files:Z wildfire-model python main.py --config config_t004_samp20_emb256.yaml  --exp_name t004_s20_e256 --auto_upload
 ```
