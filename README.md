@@ -46,13 +46,23 @@ Running larger datasets on larger model in two variants
 ```
 docker run -v "$(pwd)"/files:/app/files:Z wildfire-model python scripts/s3_data_download.py dir --s3_path datasets/t003 --local_dest files/datasets/
 ```
+### 1
+```
+docker run  --device nvidia.com/gpu=all -v "$(pwd)"/files:/app/files:Z wildfire-model python main.py --config config_t004_samp10_emb128.yaml --exp_name t004_s10_e128 --auto_upload
+```
 
-### Patch size = 16: 
+### 2
 ```
-docker run  --device nvidia.com/gpu=all -v "$(pwd)"/files:/app/files:Z wildfire-model python main.py --config config_t003_p200.yaml --dataset t003_dataset --exp_name t003_pos200 --auto_upload
+docker run  --device nvidia.com/gpu=all -v "$(pwd)"/files:/app/files:Z wildfire-model python main.py --config config_t004_samp10_emb256.yaml --exp_name t004_s10_e256 --auto_upload
 ```
 
-### pos weight = 4000
+
+### 3
 ```
-docker run  --device nvidia.com/gpu=all -v "$(pwd)"/files:/app/files:Z wildfire-model python main.py --config config_t003_p4000.yaml --dataset t003_dataset --exp_name t003_pos4000 --auto_upload
+docker run  --device nvidia.com/gpu=all -v "$(pwd)"/files:/app/files:Z wildfire-model python main.py --config config_t004_samp20_emb128.yaml --exp_name t004_s20_e128--auto_upload
+```
+
+### 4
+```
+docker run  --device nvidia.com/gpu=all -v "$(pwd)"/files:/app/files:Z wildfire-model python main.py --config config_t004_samp20_emb256.yaml  --exp_name t004_s20_e256 --auto_upload
 ```
