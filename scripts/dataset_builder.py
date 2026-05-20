@@ -145,8 +145,7 @@ class Dataset_Builder():
             target_tensors = []
             single_dynamic_tensors = []
             static_tensors = []
-            for timeframe in batch: 
-                print('Start date: ', timeframe['sample'][0])
+            for timeframe in batch:
                 try:
                     channel_sample_tensors = []
 
