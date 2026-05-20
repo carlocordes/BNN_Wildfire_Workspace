@@ -2,7 +2,7 @@
 from src.core.utils import load_config
 from src.models.vit.vit import STViT
 
-from scripts.dataset_builder import Dataset_Builder
+from scripts.dataset import SpatialTemporalDataset, skip_missing_collate_fn
 
 #External
 from pathlib import Path
@@ -16,130 +16,6 @@ import torch.optim as optim
 from torch.utils.data import DataLoader, Dataset, Subset
 from torch.utils.tensorboard import SummaryWriter
 
-class WildfireDataset(Dataset):
-    """
-    Dataset wrapper
-    """
-    def __init__(self, data_dict):
-        self.static = data_dict['static']
-        self.dynamic = data_dict['dynamic']
-        self.single_dynamic = data_dict['single_dynamic']
-        self.target = data_dict['target']
-
-    def __len__(self):
-        return len(self.dynamic)
-    
-    def __getitem__(self, idx):
-        return {
-            'static' : self.static,
-            'dynamic' : self.dynamic[idx],
-            'single_dynamic' : self.single_dynamic[idx],
-            'target' : self.target[idx]
-        }
-
-
-# Dataset-info
-def get_dataset_parameters(dataset : str):
-    logging.info(f"Loaded dataset with {dataset['static'].shape[0]} static, "\
-                 f"{dataset['single_dynamic'].shape[1]} single dynamic channels " \
-                 f"and {dataset['dynamic'].shape[1]} with {dataset['dynamic'].shape[2]} timesteps each")
-    return {
-        'num_static_channels' : dataset['static'].shape[0],
-        'num_dynamic_channels' : dataset['dynamic'].shape[1],
-        'num_single_dynamic_channels' : dataset['single_dynamic'].shape[1],
-        'num_timestamps_per_sample' : dataset['dynamic'].shape[2]
-    }
-
-
-# Dataloaders
-def build_dataloaders(data_dict, cfg_training):
-    """
-    Loads dataloaders split by 70 / 15 / 15 (Train/Validate/Test)
-    """
-    dataset = WildfireDataset(data_dict)
-
-    N = len(dataset)
-    
-    end_train = cfg_training['train_size']
-    end_val = 1 - cfg_training['val_size']
-
-    train_end = int(0.70 * N)
-    val_end = int(0.85 * N)
-
-    train_dataset = Subset(
-        dataset,
-        range(0, train_end)
-    )
-
-    val_dataset = Subset(
-        dataset,
-        range(train_end, val_end)
-    )
-
-    test_dataset = Subset(
-        dataset,
-        range(val_end, N)
-    )
-
-    logging.info("Dataset split:")
-    logging.info(f"Train samples: {len(train_dataset)}")
-    logging.info(f"Validation samples: {len(val_dataset)}")
-    logging.info(F"Test samples: {len(test_dataset)}")
-
-    train_loader = DataLoader(
-        train_dataset,
-        batch_size=cfg_training["batch_size"],
-        shuffle=False
-    )
-
-    val_loader = DataLoader(
-        val_dataset,
-        batch_size=cfg_training["batch_size"],
-        shuffle=False
-    )
-
-    test_loader = DataLoader(
-        test_dataset,
-        batch_size=cfg_training["batch_size"],
-        shuffle=False
-    )
-
-    return train_loader, val_loader, test_loader
-
-# Load dataset folder or file
-def load_dataset_dict(path_to_ds: Path):
-    if path_to_ds.is_file():
-        return torch.load(path_to_ds, weights_only=False)
-    
-    # Temporary lists to hold the tensor chunks
-    chunks = {
-        "static": None, # We'll store the first one we find
-        "dynamic": [],
-        "target": [],
-        "single_dynamic" : []
-    }
-    
-    # Use .pt or .pth (torch.load doesn't usually use .json)
-    for i, file_path in enumerate(sorted(path_to_ds.glob("*.pt"))):
-        logging.info(f'Loading and appending dataset: {file_path}')
-        file_content = torch.load(file_path, weights_only=False)
-        
-        # 1. Handle Static (Keep only the first instance)
-        if chunks["static"] is None:
-            chunks["static"] = file_content.get("static")
-        
-        # 2. Collect chunks for concatenation
-        for key in ["dynamic", "target", 'single_dynamic']:
-            if key in file_content:
-                chunks[key].append(file_content[key])
-
-    # 3. Concatenate the lists of tensors back into single tensors
-    return {
-        "static": chunks["static"],
-        "dynamic": torch.cat(chunks["dynamic"], dim=0) if chunks["dynamic"] else None,
-        "target": torch.cat(chunks["target"], dim=0) if chunks["target"] else None,
-        "single_dynamic" : torch.cat(chunks['single_dynamic'], dim = 0) if chunks['single_dynamic'] else None
-    }
 
 # Model
 def build_model(cfg_model, cfg_data, device):
@@ -153,21 +29,37 @@ def build_model(cfg_model, cfg_data, device):
     return model.to(device)
 
 # Evaluation
-def evaluate(model, loss_fn, dataset : Dataset_Builder, mode, device):
+def evaluate(model, loss_fn, cfg_training, cfg_path, mode : str, device):
+
+    dataset = SpatialTemporalDataset(cfg_path, split_type=mode)
+
+    set_dataloader = DataLoader(
+        dataset, 
+        batch_size=cfg_training['batch_size'], 
+        shuffle=False,          # Freely shuffle items within the dataset
+        num_workers=4,         # Adjust based on CPU cores (reads 4 batches in parallel!)
+        pin_memory=True,       # Speeds up tensor transfers from CPU to GPU
+        collate_fn=skip_missing_collate_fn
+    )
+
 
     model.eval()
 
     total_loss = 0.0
 
     with torch.no_grad():
+        for batch_idx, batch in enumerate(set_dataloader):
 
-        for batch in dataset.get_batches_from_dataset(mode):
+            if batch is None:
+                continue
 
             # Get data
             static_x = batch['static'].to(device)
             single_dynamic_x = batch['single_dynamic'].to(device)
             dynamic_x = batch['dynamic'].to(device)
             targets = batch['target'].to(device)
+
+
 
             # Predict
             preds = model(
@@ -180,16 +72,14 @@ def evaluate(model, loss_fn, dataset : Dataset_Builder, mode, device):
             loss = loss_fn(preds, targets)
             total_loss += loss.item()
 
-    avg_loss = total_loss / (len(dataset.val_frames) * dataset.batch_size) # Sum
+    avg_loss = total_loss / len(set_dataloader) # Sum
 
     model.train() # Back to train mode
 
     return avg_loss
 
 # Training
-def train(model, loss_fn,
-          dataset : Dataset_Builder, 
-          cfg_training, device, writer, model_save_path):
+def train(model, loss_fn, cfg_path : Path, cfg_training, device, writer, model_save_path):
     
     # Optimizer
     optimizer = optim.Adam(model.parameters(), lr=cfg_training["learning_rate"]) # TODO: Maybe replace with AdamW(lr, weight_decay)
@@ -205,12 +95,30 @@ def train(model, loss_fn,
 
     model.train() # Set training mode
 
+    logging.info(f'Loading dataset from {cfg_path}')
+
+
+    train_dataset = SpatialTemporalDataset(cfg_path, split_type="train")
+
+    train_loader = DataLoader(
+        train_dataset, 
+        batch_size=cfg_training['batch_size'], 
+        shuffle=False,          # Freely shuffle items within the dataset
+        num_workers=4,         # Adjust based on CPU cores (reads 4 batches in parallel!)
+        pin_memory=True,       # Speeds up tensor transfers from CPU to GPU
+        collate_fn=skip_missing_collate_fn
+    )
+
+
     logging.info("Starting training loop...")
 
     for epoch in range(cfg_training['num_epochs']):
         epoch_loss = 0.0
 
-        for batch_idx, batch in enumerate(dataset.get_batches_from_dataset("train_frames")):
+        for batch_idx, batch in enumerate(train_loader):
+
+            if batch is None: # Skip if batch is empty due to missing data
+                continue
             
             logging.info(f'Epoch {epoch+1} | '
                 f'Processing batch {batch_idx}'
@@ -221,6 +129,7 @@ def train(model, loss_fn,
             single_dynamic_x = batch['single_dynamic'].to(device)
             dynamic_x = batch['dynamic'].to(device)
             targets = batch['target'].to(device)
+
 
             # Predict
             preds = model(
@@ -238,15 +147,18 @@ def train(model, loss_fn,
 
             epoch_loss += loss.item()
 
-        train_loss = epoch_loss / (len(dataset.train_frames) * dataset.batch_size)
+        train_loss = epoch_loss / len(train_loader)
 
         # Validate
         val_loss = evaluate(model = model,
                             loss_fn = loss_fn,
-                            dataset = dataset,
-                            mode = "val_frames",
+                            cfg_training=cfg_training,
+                            cfg_path = cfg_path,
+                            mode = "val",
                             device = device)
 
+
+        
         # Log and TensorBoard
         writer.add_scalar('Loss/Train', train_loss, epoch)
         writer.add_scalar('Loss/Validation', val_loss, epoch)
@@ -281,6 +193,7 @@ def train(model, loss_fn,
 
     logging.info("Training complete.")
 
+            
 # ----------------------------
 # Main
 # ----------------------------
@@ -313,12 +226,6 @@ def main(config_path: Path, experiment_path: Path):
     device = torch.accelerator.current_accelerator().type if torch.accelerator.is_available() else "cpu"
     logging.info(f"Using {device} device")
 
-
-    # ---- Load Data ----
-    dataset = Dataset_Builder(config_path = config_path)
-
-
-
     # ---- Build components ----
 
     model = build_model(cfg_model = cfg_model, cfg_data = cfg_data, device = device)
@@ -329,18 +236,18 @@ def main(config_path: Path, experiment_path: Path):
     # --- Define Save Path ---
     experiment_path.mkdir(exist_ok=True)
     model_save_path = experiment_path / f"{exp_name}_model_best.pt"
-
+    """
     # ---- Train ----
     train(model = model,
           loss_fn = loss_fn,
-          dataset = dataset,
           cfg_training = cfg_training,
+          cfg_path=config_path,
           device = device,
           writer = writer,
           model_save_path = model_save_path)
 
     
-
+    """
     # Final test
     model.load_state_dict(
         torch.load(
@@ -351,13 +258,12 @@ def main(config_path: Path, experiment_path: Path):
     
 
     # Evaluate on test data
-    test_loss = evaluate(
-        model = model,
+    test_loss = evaluate(model = model,
         loss_fn = loss_fn,
-        mode = "test_frames",
-        dataset=dataset,
-        device = device
-    )
+        cfg_training=cfg_training,
+        cfg_path = config_path,
+        mode = "test",
+        device = device)
 
 
     # Log and write
