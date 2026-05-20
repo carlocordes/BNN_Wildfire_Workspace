@@ -36,12 +36,6 @@ Upload data (will upload entire results directory, name accordingly):
 docker run -v "$(pwd)"/files:/app/files wildfire-model python scripts.s3_data_upload --path files/experiments --s3_prefix results
 ````
 
-## t002 testing routine:
-Running larger datasets on larger model in two variants
-1. Patchsize: 16
-2. Patchsize: 8
-
-
 ### Download data:
 ```
 docker run -v "$(pwd)"/files:/app/files:Z wildfire-model python scripts/s3_data_download.py dir --s3_path datasets/t003 --local_dest files/datasets/
