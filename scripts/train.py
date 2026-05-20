@@ -236,7 +236,7 @@ def main(config_path: Path, experiment_path: Path):
     # --- Define Save Path ---
     experiment_path.mkdir(exist_ok=True)
     model_save_path = experiment_path / f"{exp_name}_model_best.pt"
-    """
+
     # ---- Train ----
     train(model = model,
           loss_fn = loss_fn,
@@ -246,8 +246,7 @@ def main(config_path: Path, experiment_path: Path):
           writer = writer,
           model_save_path = model_save_path)
 
-    
-    """
+
     # Final test
     model.load_state_dict(
         torch.load(
