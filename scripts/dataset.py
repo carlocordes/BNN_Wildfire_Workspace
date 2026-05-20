@@ -42,18 +42,25 @@ class SpatialTemporalDataset(Dataset):
         
         # Track channel source paths
         self.sample_base_paths = [
-            Path(self.cfg_data['NDVI']), Path(self.cfg_data['wind_speed']),
-            Path(self.cfg_data['wind_dir_v']), Path(self.cfg_data['wind_dir_u']),
-            Path(self.cfg_data['NDWI']), Path(self.cfg_data['LST'])
+            Path(self.cfg_data['NDVI']),
+            Path(self.cfg_data['NDWI']),
+            Path(self.cfg_data['wind_speed']),
+            Path(self.cfg_data['wind_dir_v']),
+            Path(self.cfg_data['wind_dir_u']),
+            Path(self.cfg_data['LST'])
         ]
         self.target_base_path = Path(self.cfg_data['target'])
+        
         self.dynamic_single_base_paths = [
-            Path(self.cfg_data['burn_history']), Path(self.cfg_data['precip'])
+            Path(self.cfg_data['burn_history']),
+            Path(self.cfg_data['precip'])
         ]
         
         # Pre-cache static layers once globally per instantiated split
         self.base_static_tensor = self._load_static_layers([
-            Path(self.cfg_data['aspect']), Path(self.cfg_data['slope']), Path(self.cfg_data['roads'])
+            Path(self.cfg_data['aspect']),
+            Path(self.cfg_data['slope']),
+            Path(self.cfg_data['roads'])
         ])
 
         # Generate complete date sequences across the timeline extent
@@ -163,3 +170,9 @@ class SpatialTemporalDataset(Dataset):
         except FileNotFoundError as e:
             # Drop sample if files are missing; collate_fn handles cleaning up the None
             return None
+        
+
+if __name__ == '__main__':
+    dataset = SpatialTemporalDataset('files/configs/fix.yaml', "train")
+
+    print(dataset.sequences[0])

@@ -13,6 +13,7 @@ import logging
 import torch
 import torch.nn as nn
 import torch.optim as optim
+from torch.optim.lr_scheduler import OneCycleLR
 from torch.utils.data import DataLoader, Dataset, Subset
 from torch.utils.tensorboard import SummaryWriter
 
@@ -36,7 +37,7 @@ def evaluate(model, loss_fn, cfg_training, cfg_path, mode : str, device):
     set_dataloader = DataLoader(
         dataset, 
         batch_size=cfg_training['batch_size'], 
-        shuffle=False,          # Freely shuffle items within the dataset
+        shuffle=True,          # Freely shuffle items within the dataset
         num_workers=4,         # Adjust based on CPU cores (reads 4 batches in parallel!)
         pin_memory=True,       # Speeds up tensor transfers from CPU to GPU
         collate_fn=skip_missing_collate_fn
@@ -46,6 +47,7 @@ def evaluate(model, loss_fn, cfg_training, cfg_path, mode : str, device):
     model.eval()
 
     total_loss = 0.0
+    valid_batches = 0
 
     with torch.no_grad():
         for batch_idx, batch in enumerate(set_dataloader):
@@ -71,8 +73,9 @@ def evaluate(model, loss_fn, cfg_training, cfg_path, mode : str, device):
             # Get loss
             loss = loss_fn(preds, targets)
             total_loss += loss.item()
+            valid_batches += 1
 
-    avg_loss = total_loss / len(set_dataloader) # Sum
+    avg_loss = total_loss / valid_batches # Sum
 
     model.train() # Back to train mode
 
@@ -82,7 +85,8 @@ def evaluate(model, loss_fn, cfg_training, cfg_path, mode : str, device):
 def train(model, loss_fn, cfg_path : Path, cfg_training, device, writer, model_save_path):
     
     # Optimizer
-    optimizer = optim.Adam(model.parameters(), lr=cfg_training["learning_rate"]) # TODO: Maybe replace with AdamW(lr, weight_decay)
+    optimizer = optim.AdamW(model.parameters(), lr=cfg_training["learning_rate"],
+                            weight_decay=cfg_training['weight_decay']) # TODO: Maybe replace with AdamW(lr, weight_decay)
     
 
     # Break conditions
@@ -97,28 +101,42 @@ def train(model, loss_fn, cfg_path : Path, cfg_training, device, writer, model_s
 
     logging.info(f'Loading dataset from {cfg_path}')
 
-
+    # Training dataloader
     train_dataset = SpatialTemporalDataset(cfg_path, split_type="train")
-
     train_loader = DataLoader(
         train_dataset, 
         batch_size=cfg_training['batch_size'], 
-        shuffle=False,          # Freely shuffle items within the dataset
+        shuffle=True,          # Freely shuffle items within the dataset
         num_workers=4,         # Adjust based on CPU cores (reads 4 batches in parallel!)
         pin_memory=True,       # Speeds up tensor transfers from CPU to GPU
         collate_fn=skip_missing_collate_fn
     )
 
+    # Setup learning rate scheduler
+    max_lr = cfg_training['learning_rate']
+    steps_per_epoch = len(train_loader)
+    total_steps = cfg_training['num_epochs'] * steps_per_epoch
+
+    scheduler = OneCycleLR(
+        optimizer,
+        max_lr=max_lr,
+        total_steps=total_steps,
+        pct_start=0.10,          # Spend the first 10% of training warming up
+        anneal_strategy='cos',   # Use a cosine curve to decay the learning rate
+        div_factor=25.0,         # Initial LR starts at max_lr / 25
+        final_div_factor=1000.0  # Final LR decays down to max_lr / 1000
+)
 
     logging.info("Starting training loop...")
 
     for epoch in range(cfg_training['num_epochs']):
         epoch_loss = 0.0
+        valid_batches = 0
 
         for batch_idx, batch in enumerate(train_loader):
 
-            if batch is None: # Skip if batch is empty due to missing data
-                continue
+            if batch is None: continue # Skip if batch is empty due to missing data
+
             
             logging.info(f'Epoch {epoch+1} | '
                 f'Processing batch {batch_idx}'
@@ -143,11 +161,17 @@ def train(model, loss_fn, cfg_path : Path, cfg_training, device, writer, model_s
 
             optimizer.zero_grad()
             loss.backward()
+            loss.backward()
+            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0) # Add this line
+
             optimizer.step()
 
-            epoch_loss += loss.item()
+            scheduler.step()
 
-        train_loss = epoch_loss / len(train_loader)
+            epoch_loss += loss.item()
+            valid_batches += 1
+
+        train_loss = epoch_loss / valid_batches
 
         # Validate
         val_loss = evaluate(model = model,
@@ -158,11 +182,12 @@ def train(model, loss_fn, cfg_path : Path, cfg_training, device, writer, model_s
                             device = device)
 
 
+        current_lr = optimizer.param_groups[0]['lr']
         
         # Log and TensorBoard
         writer.add_scalar('Loss/Train', train_loss, epoch)
         writer.add_scalar('Loss/Validation', val_loss, epoch)
-        #writer.add_scalar('LearningRate')
+        writer.add_scalar('LearningRate', current_lr)
 
         logging.info(
             f"Epoch [{epoch+1}/{cfg_training['num_epochs']}] "

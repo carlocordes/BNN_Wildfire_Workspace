@@ -6,8 +6,8 @@ Visualization of the results based on a test set and trained model saved as a GI
 from src.core.utils import load_config
 from src.core.systempaths import MODELS, DATASETS
 from src.models.vit.vit import STViT
-from scripts.train import WildfireDataset
-from torch.utils.data import DataLoader
+
+from torch.utils.data import DataLoader, Dataset
 
 def build_dataloader(data_dict, cfg_training):
 
@@ -18,12 +18,37 @@ def build_dataloader(data_dict, cfg_training):
         shuffle=False # Dont shuffle chronological data
     )
 
+
+
 # External
 import argparse
 from pathlib import Path
 import torch
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
+
+
+class WildfireDataset(Dataset):
+    """
+    Dataset wrapper
+    """
+    def __init__(self, data_dict):
+        self.static = data_dict['static']
+        self.dynamic = data_dict['dynamic']
+        self.single_dynamic = data_dict['single_dynamic']
+        self.target = data_dict['target']
+
+    def __len__(self):
+        return len(self.dynamic)
+    
+    def __getitem__(self, idx):
+        return {
+            'static' : self.static,
+            'dynamic' : self.dynamic[idx],
+            'single_dynamic' : self.single_dynamic[idx],
+            'target' : self.target[idx]
+        }
+
 
 def main(model_path: Path, dataset_path: Path, config_path: Path):
     # Load config parameters
