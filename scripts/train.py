@@ -6,9 +6,10 @@ from scripts.dataset import SpatialTemporalDataset, skip_missing_collate_fn
 
 #External
 from pathlib import Path
-import json
+import time
 import argparse
 import logging
+
 
 import torch
 import torch.nn as nn
@@ -129,17 +130,27 @@ def train(model, loss_fn, cfg_path : Path, cfg_training, device, writer, model_s
 
     logging.info("Starting training loop...")
 
+
     for epoch in range(cfg_training['num_epochs']):
+
+
+        
         epoch_loss = 0.0
         valid_batches = 0
-
+        
+        
+        start_time = time.time()
         for batch_idx, batch in enumerate(train_loader):
+            # Timing values init
+            data_time = time.time() - start_time
+            total_compute = 0
+            total_data = 0
 
             if batch is None: continue # Skip if batch is empty due to missing data
 
             
             logging.info(f'Epoch {epoch+1} | '
-                f'Processing batch {batch_idx}'
+                f'Processing batch {batch_idx + 1}'
             )
             
             # Get data
@@ -148,6 +159,7 @@ def train(model, loss_fn, cfg_path : Path, cfg_training, device, writer, model_s
             dynamic_x = batch['dynamic'].to(device)
             targets = batch['target'].to(device)
 
+            compute_start = time.time()
 
             # Predict
             preds = model(
@@ -170,7 +182,21 @@ def train(model, loss_fn, cfg_path : Path, cfg_training, device, writer, model_s
             epoch_loss += loss.item()
             valid_batches += 1
 
+            # Timing for writer
+            compute_time = time.time() - compute_start
+            total_compute += compute_time
+            total_data += data_time
+            start_time = time.time() # Reset
+
         train_loss = epoch_loss / valid_batches
+
+        # Store time statistics
+        avg_data_time = data_time / valid_batches
+        avg_compute_time = compute_time / valid_batches
+
+        writer.add_scalar('Time/Data', avg_data_time, epoch)
+        writer.add_scalar('Time/Compute', avg_compute_time, epoch)
+
 
         # Validate
         val_loss = evaluate(model = model,
@@ -186,7 +212,7 @@ def train(model, loss_fn, cfg_path : Path, cfg_training, device, writer, model_s
         # Log and TensorBoard
         writer.add_scalar('Loss/Train', train_loss, epoch)
         writer.add_scalar('Loss/Validation', val_loss, epoch)
-        writer.add_scalar('LearningRate', current_lr)
+        writer.add_scalar('LearningRate', current_lr, epoch)
 
         logging.info(
             f"Epoch [{epoch+1}/{cfg_training['num_epochs']}] "
@@ -247,7 +273,7 @@ def main(config_path: Path, experiment_path: Path):
     cfg_training = cfg["training"]
     logging.info(f'Using config file from: {config_path}')
 
-    device = torch.accelerator.current_accelerator().type if torch.accelerator.is_available() else "cpu"
+    device = "cpu" #torch.accelerator.current_accelerator().type if torch.accelerator.is_available() else "cpu"
     logging.info(f"Using {device} device")
 
     # ---- Build components ----

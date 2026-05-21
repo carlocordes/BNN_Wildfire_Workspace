@@ -24,7 +24,7 @@ def skip_missing_collate_fn(batch):
     # --- DEBUGGING PRINT ---
     # Extract the first date of the first sample in this current batch
     first_date_of_first_sample = batch[0]['meta_first_date']
-    print(f"[DEBUG] Processing batch starting with sample date: {first_date_of_first_sample} (Batch size: {len(batch)})")
+    #print(f"[DEBUG] Processing batch starting with sample date: {first_date_of_first_sample} (Batch size: {len(batch)})")
     # -----------------------
 
     # Use PyTorch's default collate engine to stack the remaining samples
