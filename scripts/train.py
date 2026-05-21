@@ -161,7 +161,6 @@ def train(model, loss_fn, cfg_path : Path, cfg_training, device, writer, model_s
 
             optimizer.zero_grad()
             loss.backward()
-            loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0) # Add this line
 
             optimizer.step()

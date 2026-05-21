@@ -18,7 +18,7 @@ def skip_missing_collate_fn(batch):
     
     # If the batch is completely empty, return None to safely bypass it
     if len(batch) == 0:
-        print("[DEBUG] Batch is entirely empty due to missing files. Skipping...")
+        #print("[DEBUG] Batch is entirely empty due to missing files. Skipping...")
         return None
         
     # --- DEBUGGING PRINT ---
