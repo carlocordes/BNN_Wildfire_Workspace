@@ -1,0 +1,100 @@
+data:
+  spatial_extent:
+    longmin: -9.4900
+    longmax: -6.0234
+    latmin: 36.812
+    latmax: 42.2724
+  crs: "EPSG:3763"
+  scale: 1000 # meters
+
+  temporal_extent:
+    start_date: "2019-01-01"
+    end_date: "2025-12-31"
+    day_interval: 1
+
+    sequence_period : 1 # Time between respective sequences
+
+    sample_extent : 10 # Total time of sample
+    sample_period : 1 # Time between images in sample
+
+    target_extent : 14
+
+    lead_time : 0 # Time between last sample and target
+
+
+
+model: 
+  num_modules: 2
+  num_static_channels : 4
+  num_single_dynamic_channels : 2
+  num_dynamic_channels : 6
+
+  embedding_dim: 128
+  patch_size: 16 # Pixels
+  dir: 'data/models'
+
+training:
+  learning_rate: 0.0001
+  weight_decay : 0.01
+
+  num_epochs: 65
+  warm_up_epochs : 5
+  pos_weight : 3028
+  batch_size: 4
+  num_splits : 10
+
+  train_size : 0.7
+  val_size : 0.15
+  test_size : 0.15
+
+  patience : 7
+
+
+data_paths:
+  raw:
+    wind_speed : 'files/data/raw/wind_speed'
+    wind_dir_u : 'files/data/raw/wind_dir_WE'
+    wind_dir_v : 'files/data/raw/wind_dir_SN'
+
+    LST : 'files/data/raw/LST'
+
+    NDVI : 'files/data/raw/NDVI'
+    NDWI : 'files/data/raw/NDWI'
+
+    precip : 'files/data/raw/precip'
+
+    DTM : 'files/data/raw/elevation'
+    roads : 'files/data/raw/roads'
+
+    target : 'files/data/raw/target_zarr'
+    uncertainty : 'files/data/raw/uncertainty'
+
+  processed:
+    roads : 'files/data/processed/roads'
+
+    wind_speed : 'files/data/processed/wind_speed'
+    wind_dir_u : 'files/data/processed/wind_dir_WE'
+    wind_dir_v : 'files/data/processed/wind_dir_SN'
+
+    LST : 'files/data/processed/LST'
+
+    NDVI : 'files/data/processed/NDVI'
+    NDWI : 'files/data/processed/NDWI'
+
+    precip : 'files/data/processed/precip'
+
+    slope : 'files/data/processed/slope'
+    aspect : 'files/data/processed/aspect'
+
+    burn_history : 'files/data/processed/burn_history'
+    
+    target: 'files/data/processed/target'
+
+    
+
+data_sets:
+  path: "data/datasets"
+
+
+# NOTES: Direct comparison to config_t005_1
+# Including full calendar year in test/val splits as not to inflate values
