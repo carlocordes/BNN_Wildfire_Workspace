@@ -8,8 +8,8 @@ data:
   scale: 1000 # meters
 
   temporal_extent:
-    start_date: "2025-02-01"
-    end_date: "2025-03-01"
+    start_date: "2022-01-01"
+    end_date: "2025-12-31"
     day_interval: 1
 
     sequence_period : 1 # Time between respective sequences

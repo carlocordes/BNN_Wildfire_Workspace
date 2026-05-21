@@ -42,17 +42,17 @@ docker run -v "$(pwd)"/files:/app/files:Z wildfire-model python scripts/s3_data_
 ```
 ### 1
 ```
-docker run  --device nvidia.com/gpu=all --ipc=host -v "$(pwd)"/files:/app/files:Z wildfire-model python main.py --config config_t005_1.yaml --exp_name t005_1 --auto_upload
+docker run  --device nvidia.com/gpu=all --ipc=host -v "$(pwd)"/files:/app/files:Z wildfire-model python main.py --config config_t005_1.yaml --exp_name t005_1 --auto_upload;
 ```
 
 ### 2
 ```
-docker run  --device nvidia.com/gpu=all --ipc=host -v "$(pwd)"/files:/app/files:Z wildfire-model python main.py --config config_t005_2.yaml --exp_name t005_2 --auto_upload
+docker run  --device nvidia.com/gpu=all --ipc=host -v "$(pwd)"/files:/app/files:Z wildfire-model python main.py --config config_t005_2.yaml --exp_name t005_2 --auto_upload;
 ```
 
 
 ### 3
 ```
-docker run  --device nvidia.com/gpu=all --ipc=host -v "$(pwd)"/files:/app/files:Z wildfire-model python main.py --config config_t005_3.yaml --exp_name t005_3 --auto_upload
+docker run  --device nvidia.com/gpu=all --ipc=host -v "$(pwd)"/files:/app/files:Z wildfire-model python main.py --config config_t005_3.yaml --exp_name t005_3 --auto_upload;
 ```
 
