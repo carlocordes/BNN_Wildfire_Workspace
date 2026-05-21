@@ -273,7 +273,7 @@ def main(config_path: Path, experiment_path: Path):
     cfg_training = cfg["training"]
     logging.info(f'Using config file from: {config_path}')
 
-    device = "cpu" #torch.accelerator.current_accelerator().type if torch.accelerator.is_available() else "cpu"
+    device = torch.accelerator.current_accelerator().type if torch.accelerator.is_available() else "cpu"
     logging.info(f"Using {device} device")
 
     # ---- Build components ----
