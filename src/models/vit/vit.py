@@ -1,40 +1,16 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import math
-
-class FusionBlock(nn.Module):
-    def __init__(self, dim, heads):
-        super().__init__()
-
-        self.attn = nn.MultiheadAttention(dim, heads, batch_first=True)
-
-        self.ff = nn.Sequential(
-            nn.Linear(dim, dim * 4),
-            nn.GELU(),
-            nn.Linear(dim * 4, dim)
-        )
-
-        self.norm1 = nn.LayerNorm(dim)
-        self.norm2 = nn.LayerNorm(dim)
-
-    def forward(self, x, context):
-        # cross-attn
-        attn_out, _ = self.attn(x, context, context)
-        x = self.norm1(x + attn_out)
-
-        # feedforward
-        x = self.norm2(x + self.ff(x))
-        return x
 
 class STViT(nn.Module):
     """
-    Spatio-temporal Vision Transformer
-        Args:
-        batch_size: Number of like-sized samples to be passed through at one forward feed
-        num_modules: 
-        patch_size:
-        embedding_dim : 
+    Spatio-temporal Channel-Fused Vision Transformer (ST-FlexViT)
+    
+    Fixes implemented:
+      1. Early cross-channel fusion (Unified Conv layers instead of individual loops).
+      2. Temporal tracking preservation (Conv3D kernel size temporal extent = 1).
+      3. Wider, shallower transformer backbone (replaces 64 narrow layers with 8 robust layers).
+      4. Progressive, symmetrical decoder.
     """
     def __init__(self,
                  num_static_channels : int,
@@ -42,138 +18,104 @@ class STViT(nn.Module):
                  num_timestamps_per_sample : int,
                  patch_size : int,
                  embedding_dim: int,
+                 encoder_depth: int = 8,  # CHANGED: Controlled shallow depth
+                 num_heads: int = 8       # ORIGINAL: Matches your attention setups
         ):
-        
         super().__init__()
         
-        #Parameters
+        # [ORIGINAL] Structural tracking parameters
         self.patch_size = patch_size
         self.embedding_dim = embedding_dim
-
-        self.num_static_channels= num_static_channels
+        self.num_static_channels = num_static_channels
         self.num_dynamic_channels = num_dynamic_channels
-
         self.num_timestamps_per_sample = num_timestamps_per_sample
         
-        # Static embeds
-        self.static_embeds = nn.ModuleList([
-            nn.Conv2d(in_channels = 1,
-                      out_channels = embedding_dim,
-                      kernel_size = patch_size,
-                      stride = patch_size)
-            for _ in range(self.num_static_channels)
-        ])    
-
-        # Static modality tags
-        self.static_tags = nn.Parameter(torch.randn(num_static_channels, 1, 1, embedding_dim))
-
-        # Dynamic embeds
-        self.dynamic_embeds = nn.ModuleList([
-            nn.Conv3d(in_channels = 1,
-                      out_channels = self.embedding_dim,
-                      # Kernel definition
-                      kernel_size = (self.num_timestamps_per_sample, self.patch_size, self.patch_size),
-                      stride = (self.num_timestamps_per_sample, self.patch_size, self.patch_size))
-            for _ in range(self.num_dynamic_channels)
-        ])
-
-        # Dynamic modality tags
-        self.dynamic_tags = nn.Parameter(torch.randn(self.num_dynamic_channels, 1, 1, self.embedding_dim))
-
-        # Self-Attention blocks
-        self.static_encoders = nn.ModuleList([
-            nn.TransformerEncoder(
-                encoder_layer=nn.TransformerEncoderLayer(
-                    d_model=self.embedding_dim,
-                    nhead=8,
-                    dim_feedforward=self.embedding_dim * 4,
-                    dropout=0.1,
-                    activation="gelu",
-                    batch_first=True,
-                    norm_first=True
-                ),
-                num_layers=4
-            )
-            for _ in range(self.num_static_channels)
-        ])
-
-
-        self.dynamic_encoders = nn.ModuleList([
-            nn.TransformerEncoder(
-                encoder_layer=nn.TransformerEncoderLayer(
-                    d_model=self.embedding_dim,
-                    nhead=8,
-                    dim_feedforward=self.embedding_dim * 4,
-                    dropout=0.1,
-                    activation="gelu",
-                    batch_first=True,
-                    norm_first=True
-                ),
-                num_layers=4
-            )
-            for _ in range(self.num_dynamic_channels)
-        ])
+        # [ORIGINAL CONTENT / CHANGED EXECUTION] 
+        # You combined static and single_dynamic channels together in forward(). 
+        # We calculate the total combined input channels here.
+        self.total_static_inputs = num_static_channels
         
-        # Mixers for concat operations
-        self.static_mixer = nn.Sequential(
-            nn.Linear(
-                self.num_static_channels * self.embedding_dim,
-                self.embedding_dim * 2
-            ),
-            nn.GELU(),
-            nn.Dropout(0.1),
-
-            nn.Linear(
-                self.embedding_dim * 2,
-                self.embedding_dim
-            ),
-            nn.LayerNorm(self.embedding_dim)
-        )
+        # ==========================================
+        # PHASE 1 & 2: CHANGED - UNIFIED TOKENIZATION LAYER
+        # ==========================================
         
-        
-        self.dynamic_mixer = nn.Sequential(
-            nn.Linear(
-                self.num_dynamic_channels * self.embedding_dim,
-                self.embedding_dim * 2
-            ),
-            nn.GELU(),
-            nn.Dropout(0.1),
+        # CHANGED: Instead of a ModuleList of separate Conv2Ds for each channel,
+        # we pass all combined static channels into ONE Conv2D. This forces 
+        # cross-channel features to mix immediately at the patch level.
+        self.static_embed = nn.Conv2d(
+            in_channels=self.total_static_inputs,
+            out_channels=self.embedding_dim,
+            kernel_size=patch_size,
+            stride=patch_size
+        )    
 
-            nn.Linear(
-                self.embedding_dim * 2,
-                self.embedding_dim
-            ),
-            nn.LayerNorm(self.embedding_dim)
+        # CHANGED: Modified Conv3D kernel to (1, patch, patch) instead of (10, patch, patch).
+        # This treats each day in your 10-day timeline as its own distinct sequence step, 
+        # preventing immediate temporal collapse.
+        self.dynamic_embed = nn.Conv3d(
+            in_channels=num_dynamic_channels,
+            out_channels=self.embedding_dim,
+            kernel_size=(1, patch_size, patch_size),
+            stride=(1, patch_size, patch_size)
         )
 
+        # CHANGED: Learnable Temporal Embedding vector to track chronological order
+        self.temporal_embed = nn.Parameter(
+            torch.randn(1, num_timestamps_per_sample, 1, self.embedding_dim)
+        )
 
-        # Cross-Attention block
-        num_fusion_blocks = 16
-        self.module_fusion = nn.ModuleList([
-            FusionBlock(embedding_dim, 8)
-            for _ in range(num_fusion_blocks)
-        ])
+        # CHANGED: Learnable modality identity tokens to separate static vs dynamic inputs
+        self.static_type_tag = nn.Parameter(torch.randn(1, 1, self.embedding_dim))
+        self.dynamic_type_tag = nn.Parameter(torch.randn(1, 1, self.embedding_dim))
 
-        # Decoder
+        # ==========================================
+        # PHASE 3: CHANGED - JOINT SPATIOTEMPORAL BACKBONE
+        # ==========================================
+        
+        # CHANGED: Replaced your 12 isolated transformers and 16 fusion blocks 
+        # (64 layers total) with a single, highly expressive joint backbone.
+        # This allows cross-variable, spatial, and temporal attention to occur simultaneously.
+        self.joint_backbone = nn.TransformerEncoder(
+            encoder_layer=nn.TransformerEncoderLayer(
+                d_model=self.embedding_dim,   # Increase this via config (e.g., 256 or 512)
+                nhead=num_heads,
+                dim_feedforward=self.embedding_dim * 4,
+                dropout=0.1,
+                activation="gelu",
+                batch_first=True,
+                norm_first=True
+            ),
+            num_layers=encoder_depth
+        )
+        
+        # CHANGED: Sequence aggregation layer to project joint tokens back to a single 2D grid spatial layout
+        self.sequence_projector = nn.Linear(self.embedding_dim, self.embedding_dim)
+
+        # ==========================================
+        # PHASE 4: CHANGED - PROGRESSIVE SYMMETRICAL DECODER
+        # ==========================================
+        
+        # CHANGED: Replaced the brute-force abrupt bilinear scaling blocks.
+        # This progressively restores resolution step-by-step using convolutions 
+        # to ensure local pixel representations remain cohesive.
         self.decoder = nn.Sequential(
-            # Step 1: Feature compression and initial refinement
+            # Grid resolution up to Intermediate resolution (e.g., 16x16 patches upscaled by 4x -> 4x4 resolution maps)
+            nn.Upsample(scale_factor=4, mode="bilinear", align_corners=False),
             nn.Conv2d(self.embedding_dim, self.embedding_dim // 2, kernel_size=3, padding=1),
             nn.BatchNorm2d(self.embedding_dim // 2),
             nn.ReLU(inplace=True),
             
-            # Step 2: First Upsample (4x)
+            # Intermediate upsample (4x) to reach original target resolution
             nn.Upsample(scale_factor=4, mode="bilinear", align_corners=False),
             nn.Conv2d(self.embedding_dim // 2, self.embedding_dim // 4, kernel_size=3, padding=1),
             nn.BatchNorm2d(self.embedding_dim // 4),
             nn.ReLU(inplace=True),
             
-            # Step 3: Second Upsample (4x) to reach original resolution
-            nn.Upsample(scale_factor=4, mode="bilinear", align_corners=False),
-            
-            # Step 4: Final prediction head (Collapse to 1 channel for binary Fire/No-Fire)
+            # Final output mapping projection (1 channel output for binary logit cross-entropy prediction)
             nn.Conv2d(self.embedding_dim // 4, 1, kernel_size=1)
         )
 
+    # [ORIGINAL] Kept your exact 2D Sin-Cos Meshgrid calculation mechanism intact
     def get_2d_pos_embed(self, grid_h, grid_w, device):
         grid_y, grid_x = torch.meshgrid(torch.arange(grid_h), torch.arange(grid_w), indexing='ij')
         grid_y, grid_x = grid_y.to(device).float(), grid_x.to(device).float()
@@ -185,108 +127,94 @@ class STViT(nn.Module):
         pos_embed = torch.cat([torch.sin(out_y), torch.cos(out_y), torch.sin(out_x), torch.cos(out_x)], dim=-1)
         return pos_embed.flatten(0, 1).unsqueeze(0)
 
-    def forward(self, x_static, x_dynamic, x_single_dynamic, return_tokens = False):
+    def forward(self, x_static, x_dynamic, x_single_dynamic):
+        B = x_static.shape[0]
 
-        # Cat static channels together
-        x_static = torch.cat([x_static, x_single_dynamic], dim = 1)
+        # [ORIGINAL] Concat single-layer dynamic into the static block sequence
+        x_static = torch.cat([x_static, x_single_dynamic], dim=1)
 
-        ## Pad input to be divisible by patch size via reflect method
-        # Pad static (4D): (B, C, H, W) -> (B, C, H+pad_h, W+pad_w)
+        # [ORIGINAL] Reflection padding to ensure patch size divisibility
         orig_h, orig_w = x_static.shape[-2:]
         pad_h = (self.patch_size - orig_h % self.patch_size) % self.patch_size
         pad_w = (self.patch_size - orig_w % self.patch_size) % self.patch_size
+        
+        x_static = F.pad(x_static, (0, pad_w, 0, pad_h), mode='reflect')
+        x_dynamic = F.pad(x_dynamic, (0, pad_w, 0, pad_h, 0, 0), mode='reflect')
 
-        pad_4d = (0, pad_w, 0, pad_h)  # (left, right, top, bottom)
-
-        x_static = F.pad(x_static, pad_4d, mode='reflect')
-
-        # Pad dynamic (5D): (B, C, T, H, W) -> (B, C, T, H+pad_h, W+pad_w)
-        pad_5d = (0, pad_w, 0, pad_h, 0, 0)
-        x_dynamic = F.pad(x_dynamic, pad_5d, mode='reflect')
-
-
-
-        ## Pre-produce 2d embeddings
+        # [ORIGINAL] Grid dimension calculations
         padded_h, padded_w = x_static.shape[-2:]
         grid_h = padded_h // self.patch_size
         grid_w = padded_w // self.patch_size
+        num_patches_per_frame = grid_h * grid_w
 
-        spatial_pos_embed = self.get_2d_pos_embed(
-            grid_h = grid_h,
-            grid_w = grid_w,
-            device = x_static.device
-        )
+        # [ORIGINAL] Positional tracking map initialization
+        spatial_pos_embed = self.get_2d_pos_embed(grid_h, grid_w, x_static.device)
 
-
-
-        ## Embedding
-        # Patch embedding for static
-        embedded_static_tokens = []
-        for i, embed_layer in enumerate(self.static_embeds):
-            single_channel = x_static[:, i:i+1, :, :] # Slice
-
-            tokens = embed_layer(single_channel) # Embed
-            tokens = tokens.flatten(2).transpose(1,2) # Rearrange
-
-            tokens = tokens + spatial_pos_embed # Add 2D spatial embedding
-            tokens = tokens + self.static_tags[i] # Add static modularity token
-
-            embedded_static_tokens.append(tokens)
-            
-        # Tublet embedding for dynamic
-        embedded_dynamic_tokens = []
-        for i, embed_layer in enumerate(self.dynamic_embeds):
-            single_channel = x_dynamic[:, i:i+1, :, :, :] # Slice
-
-            tokens = embed_layer(single_channel)
-            tokens = tokens.squeeze(2) # Rearrange
-            tokens = tokens.flatten(2).transpose(1,2)
-
-            tokens = tokens + spatial_pos_embed # Add 2D spatial embedding
-            
-            tokens = tokens + self.dynamic_tags[i] # Add dynamic modularity token
-
-            embedded_dynamic_tokens.append(tokens)
-
-
-
-        ## Encoding
-        encoded_static = []
-        for i, tokens in enumerate(embedded_static_tokens):
-            encoded_static.append(self.static_encoders[i](tokens))
-
-        encoded_dynamic = []
-        for i, tokens in enumerate(embedded_dynamic_tokens):
-            encoded_dynamic.append(self.dynamic_encoders[i](tokens))
-
-
-
-        ## Modality mixing (stacking modalities)
-        # Stack
-        static_concat = torch.cat(encoded_static, dim = -1)
-        dynamic_concat = torch.cat(encoded_dynamic, dim = -1)
+        # ==========================================
+        # CHANGED: SIMPLIFIED & FUSED FORWARD PROJECTIONS
+        # ==========================================
         
-        # Retain embedding dimension
-        static_mixed = self.static_mixer(static_concat)
-        dynamic_mixed = self.dynamic_mixer(dynamic_concat)
+        # 1. Process Unified Static Tokens
+        # Shape: (B, Static_Ch, H, W) -> Conv2d -> (B, Embed_Dim, Grid_H, Grid_W)
+        static_tokens = self.static_embed(x_static)
+        static_tokens = static_tokens.flatten(2).transpose(1, 2) # (B, Num_Patches, Embed_Dim)
+        
+        # Apply structural identifiers
+        static_tokens = static_tokens + spatial_pos_embed
+        static_tokens = static_tokens + self.static_type_tag
 
+        # 2. Process Unified Dynamic Tokens (Preserving Timeline Axis)
+        # Shape: (B, Dynamic_Ch, T, H, W) -> Conv3D -> (B, Embed_Dim, T, Grid_H, Grid_W)
+        dynamic_tokens = self.dynamic_embed(x_dynamic)
+        
+        # Reshape to easily inject distinct temporal spatial identifiers
+        # Shape: (B, Embed_Dim, T, Grid_H * Grid_W) -> Permute -> (B, T, Grid_H * Grid_W, Embed_Dim)
+        dynamic_tokens = dynamic_tokens.flatten(3).permute(0, 2, 3, 1)
+        
+        # Inject matching 2D coordinate embeddings across all individual days
+        dynamic_tokens = dynamic_tokens + spatial_pos_embed.unsqueeze(1)
+        # Inject the learnable chronological 1D temporal embedding
+        dynamic_tokens = dynamic_tokens + self.temporal_embed
+        # Add dynamic feature source identifier tag
+        dynamic_tokens = dynamic_tokens + self.dynamic_type_tag
+        
+        # Flatten time and space tracking dimensions into a single continuous token array sequence
+        # Shape: (B, T * Num_Patches, Embed_Dim)
+        dynamic_tokens = dynamic_tokens.flatten(1, 2)
 
+        # 3. Join Token Chains Sequentially 
+        # Sequence Length = (Num_Patches) + (10 * Num_Patches)
+        joint_token_sequence = torch.cat([static_tokens, dynamic_tokens], dim=1)
 
-        ## Final fusion
-        fused_tokens = dynamic_mixed
+        # 4. Joint Attention Sequence Backbone Execution
+        enrolled_tokens = self.joint_backbone(joint_token_sequence)
 
-        for block in self.module_fusion:
-            fused_tokens = block(fused_tokens, static_mixed)
+        # ==========================================
+        # CHANGED: AGGREGATE SEQUENCES BACK TO 2D RECONSTRUCTION GRID
+        # ==========================================
+        
+        # Separate the computed unified stream tokens back into their original spatial blocks
+        processed_static = enrolled_tokens[:, :num_patches_per_frame, :]
+        processed_dynamic = enrolled_tokens[:, num_patches_per_frame:, :]
+        
+        # Reshape dynamic tokens back to structure: (B, T, Num_Patches, Embed_Dim)
+        processed_dynamic = processed_dynamic.view(B, self.num_timestamps_per_sample, num_patches_per_frame, self.embedding_dim)
+        # Aggregate temporal vectors across the 10-day timeline via a mean reduction step
+        temporal_aggregated_dynamic = processed_dynamic.mean(dim=1) 
+        
+        # Fuse the spatial representations of static features and temporal histories together
+        fused_spatial_tokens = processed_static + temporal_aggregated_dynamic
+        fused_spatial_tokens = self.sequence_projector(fused_spatial_tokens)
 
-        ## Decoder
-        batch_size, _, __ = fused_tokens.shape
-        x_2d = fused_tokens.transpose(1,2).contiguous().view(
-                batch_size, self.embedding_dim, grid_h, grid_w
+        # Reshape the token sequence chain back into a 2D Feature Map Grid format for standard CNN convolution reading
+        x_2d = fused_spatial_tokens.transpose(1, 2).contiguous().view(
+            B, self.embedding_dim, grid_h, grid_w
         )
+
+        # 5. Execute Progressive Resolution Upsampling Decoder Path
         pred_map = self.decoder(x_2d)
 
-        pred_map = pred_map[:, 0:1, :orig_h, :orig_w] # "Un-pad" to original dimensions
+        # [ORIGINAL] Slice off padding adjustments back to user raw target specifications
+        pred_map = pred_map[:, 0:1, :orig_h, :orig_w]
         
-        if return_tokens:
-            return pred_map, fused_tokens
-        return(pred_map)
+        return pred_map
