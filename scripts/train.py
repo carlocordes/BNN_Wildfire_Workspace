@@ -113,7 +113,7 @@ def train(model, loss_fn, cfg_path: Path, cfg_training, device, writer, model_sa
         optimizer,
         max_lr=max_lr,
         total_steps=total_steps,
-        pct_start=0.10,          
+        pct_start=0.30, # time spent warming up          
         anneal_strategy='cos',   
         div_factor=25.0,         
         final_div_factor=1000.0  
