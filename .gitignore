@@ -19,5 +19,6 @@ datasets/
 files/*
 !files/configs/
 
+files/configs/fix.yaml
 
 mnt/
