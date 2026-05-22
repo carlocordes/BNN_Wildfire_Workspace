@@ -49,7 +49,7 @@ data:
 
 == Dataset Construction
 === Timeframe Configuration <subsec:time_config>
-As part of the research objectives are to investigate the temporal scopes of both data and predictions, it is important to be clear about terminology. The datasets are created according to configurations. These can be adjusted depending on the desired test case. As we handle temporally dynamic datasets we need to define how timesteps of samples are represented in the dataset. To ensure consistency in naming these, we here declare a series of term definitions relevant for this step:
+A section of the research objective is to asses the influences of the temporal scopes of both data and predictions. Both can be variably adjusted depending on the desired test case. As we handle temporally dynamic datasets we need to define how timesteps of samples are represented in the dataset. To ensure consistency in naming these, we here declare a series of term definitions relevant for this step:
 
 
 - *Sample:* Input data the model sees to form predictions; describes the set of timestamps for one forward pass
@@ -67,7 +67,14 @@ As part of the research objectives are to investigate the temporal scopes of bot
 ) <fig:temporal_scope>
 #todo(stroke : orange)[Update figure of timestamp configurations]
 
-@fig:temporal_scope illustrates the terms defined above. It shows two consecutive sequences as well as their their respective samples and targets. The configuration file governs the total time of interest. The dataset builder then generates a set of timestamps as governed by the rest of the temporal configurations and iterates through the respective file for every module. Sequences with missing images are skipped entirely to ensure consistency. 
+Every sample is constructed by 3 different kinds of data:
+- Static: equivalent in every sample, describes non-variable data (e.g. terrain)
+- Dynamic: time-series data consisting of multiple images (e.g. wind)
+- Single-dynamic: dynamic data that is considered to be less temporally dependent and assumed consistent over the extent of the sample (e.g. 30 day precipitation sum)
+
+@fig:temporal_scope illustrates the terms defined above. It shows two consecutive sequences as well as their their respective samples and targets. It shows the temporal division of the sample into subsequent timesteps. The distance between sample and target corresponds to the above definition of #emph[lead-time.]
+
+The configuration file that belongs to a model training governs the total time of interest and all parameters defining the temporal relationship of input data. The dataset builder then generates a set of timestamps as governed by the rest of the temporal configurations and iterates through the respective file for every module. Sequences with missing images are skipped entirely to ensure consistency. These dynamic modules are accompanied by the static data, which is the same in every sample. The result is a set of sample/target combinations spanning the entire domain of temporal interest.
 
 
 === Torch Datasets & Tensors
@@ -146,7 +153,7 @@ $ arrow(e)_"pos" = vec(sin(h omega), cos(h omega), sin(w omega), cos(w omega)) i
 @fig:embedding_dims shows samples of the modes of the positional embeddings for every patch in the input image, in this case $80 times 40$. These include waves that propagate in direction of height and width. For every patch we add the embedding values of all dimensions. 
 
 #figure(
-  image("../figs/encoding_dims_visual.png", width:120%),
+  image("../figs/encoding_dims_visual.png", width:110%),
   placement: auto, 
   caption: [Additive encoded values per encoding dimension],
 ) <fig:embedding_dims>
@@ -154,7 +161,7 @@ $ arrow(e)_"pos" = vec(sin(h omega), cos(h omega), sin(w omega), cos(w omega)) i
 Given the multitude of modes we can form very individualised encodings for all patches. @fig:embedding_simil shows the cosine similarity of patches to one another for different embedding dimensions. Here the central patch serves as an anchor-patch, with the values of all patches describing the its similarity to it. This shows that sinusoidal positional embedding is able to establish similarities and differences between patches, depending on their respective proximity. Furthermore, it is important to mention that the utility of this process heavily depends on the embedding dimension chosen. A higher embedding dimension allows to pass more sinusoidal modes and hence to create a more distinct characterization of each patch. We here show the cosine similarity for three embedding dimensions, which are more descriptive for larger values.  
 
 #figure(
-  image("../figs/encoding_simil_visual.png", width:120%),
+  image("../figs/encoding_simil_visual.png", width:110%),
   placement: auto, 
   caption: [Cosine similarity of patches relative to central anchor-patch at varying embedding dimension],
 ) <fig:embedding_simil>
