@@ -34,7 +34,7 @@ model:
   dir: 'data/models'
 
 training:
-  learning_rate: 0.00005 # Changed to prevent early steep updates
+  learning_rate: 0.00002 # Changed to prevent early steep updates
   weight_decay : 0.1 #. Changed to penalize static coordinates
 
   num_epochs: 100
