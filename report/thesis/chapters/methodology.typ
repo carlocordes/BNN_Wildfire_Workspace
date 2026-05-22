@@ -71,7 +71,7 @@ As part of the research objectives are to investigate the temporal scopes of bot
 
 
 === Torch Datasets & Tensors
-Moving data from images into the pytorch framework is done using its fundamental data structure, the *Tensor*. Like in the traditional mathematical sense this is an array of arbitrary dimension containing elements of a single data type, but has a few computation-driven features. Most importantly, it is optimized to be handled by GPU. Tensors are directly assosciated with the model instance (elaborated in @subsec:backprop) and have an attribute that defines whether they are adjustable model parameters. This concept is specifically designed for those tensors containing model weights. PyTorch can track the operations imposed on a tensor, which makes later backpropagation to these easier #citep(<pytorch_tensor>). The sequences described in @subsec:time_config are appended into such a tensor structures and then saved as portable datasets to be made accessible on larger compute resources.
+Moving data from images into the pytorch framework is done using its fundamental data structure: the *Tensor*. Like in the traditional mathematical sense this is an array of arbitrary dimension containing elements of a single data type, but has a few computation-driven features. Most importantly, it is optimized to be handled by GPU. Tensors are directly assosciated with the model instance (elaborated in @subsec:backprop) and have an attribute that defines whether they are adjustable model parameters. This concept is specifically designed for those tensors containing model weights. PyTorch can track the operations imposed on a tensor, which makes later backpropagation to these easier #citep(<pytorch_tensor>). The sequences described in @subsec:time_config are appended into such a tensor structures and then saved as portable datasets to be made accessible on larger compute resources.
 
 
 
@@ -264,6 +264,7 @@ To promote generalization of a trained model, we use a train-validation-test spl
   caption: [Training routine],
   pseudocode-list[
     + *Input:* Load dataset, initialize dataloader, move to GPU
+    + Calculate class imbalance positive weight $w$
     + Initialize loss function, optimizer, model from config
     + Split data (70/15/15) into training- validation- and testing sets
     + $"best_loss" = infinity$
@@ -280,9 +281,9 @@ To promote generalization of a trained model, we use a train-validation-test spl
       + *if* validation_loss < best loss:
         + best_loss = validation_loss
         + *Save model*
-      + *if* no improvement for 15 epochs:
+      + *if* no improvement for 7 epochs:
         + *break*
-      + Compute: test loss on test dataset
+      + Compute: *test loss* on test dataset
   ]
 ) <algo:training>
 
@@ -316,6 +317,5 @@ $ theta_(t+1) = theta_t + nabla_(theta)L $
 
 A baseline learning rate is defined via the project configuration and passed to the optimizer class. It uses this as a baseline value and adjusts it adaptively in order to stabilise and accelerate parameter convergence.
 
-#todo(stroke : green)[Reference pytorch docs]
 
 === Test Cases

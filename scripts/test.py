@@ -83,6 +83,8 @@ def main(model_path: Path, dataset_path: Path, config_path: Path):
         for batch_idx, batch in enumerate(dataloader):
             if batch_idx > 50: 
                 break
+
+            print(f'Predicting batch {batch_idx} / {len(dataloader)}')
             
             static_x = batch['static'].to(device)
             dynamic_x = batch['dynamic'].to(device)

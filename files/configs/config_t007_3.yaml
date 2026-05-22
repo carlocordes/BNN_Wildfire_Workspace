@@ -8,13 +8,13 @@ data:
   scale: 1000 # meters
 
   temporal_extent:
-    start_date: "2022-01-01"
-    end_date: "2022-02-25"
+    start_date: "2019-01-01"
+    end_date: "2025-12-31"
     day_interval: 1
 
-    sequence_period : 4 # Time between respective sequences
+    sequence_period : 4 # Da between respective sequences
 
-    sample_extent : 10 # Total time of sample
+    sample_extent : 3 # Total time of sample
     sample_period : 1 # Time between images in sample
 
     target_extent : 14
@@ -34,10 +34,10 @@ model:
   dir: 'data/models'
 
 training:
-  learning_rate: 0.0001
-  weight_decay : 0.01
+  learning_rate: 0.00002 # Changed to prevent early steep updates
+  weight_decay : 0.1 #. Changed to penalize static coordinates
 
-  num_epochs: 1
+  num_epochs: 100
   warm_up_epochs : 5
   pos_weight : 3028
   batch_size: 4
