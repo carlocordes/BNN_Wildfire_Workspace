@@ -150,3 +150,96 @@ class SpatialTemporalDataset(Dataset):
             }
         except FileNotFoundError:
             return None
+        
+if __name__ == '__main__':
+    import matplotlib.pyplot as plt
+    import sys
+
+    # Quick configuration path definition
+    config_path = Path("files/configs/config_t007_1.yaml") # Adjust this if your config has a different path
+    
+    if not config_path.exists():
+        print(f"[ERROR] Config file not found at {config_path}. Please check your path alignment.")
+        sys.exit(1)
+
+    print("=" * 60)
+    print("        STARTING SPATIO-TEMPORAL DATASET DIAGNOSTIC          ")
+    print("=" * 60)
+
+    try:
+        # 1. Initialize all three splits to verify out-of-time chronological blocks
+        train_set = SpatialTemporalDataset(config_path, split_type="train")
+        val_set = SpatialTemporalDataset(config_path, split_type="val")
+        test_set = SpatialTemporalDataset(config_path, split_type="test")
+        
+        print("\n--- Split Allocations & Calendar Ranges ---")
+        
+        # Helper to extract the date bounds safely if samples exist
+        def print_split_range(name, dataset):
+            if len(dataset) > 0:
+                start_date = dataset.sequences[0]['sample'][0]
+                end_date = dataset.sequences[-1]['target'][-1]
+                print(f"{name:<20} : {len(dataset):<5} samples | Covers: {start_date} to {end_date}")
+            else:
+                print(f"{name:<20} : 0     samples | No sequences generated.")
+
+        print_split_range("Training Data", train_set)
+        print_split_range("Validation Data", val_set)
+        print_split_range("Testing Data", test_set)
+
+        # 2. Extract a sample sequence from the training dataset
+        if len(train_set) == 0:
+            print("\n[WARNING] Dataset initialized but returned 0 samples. Check raw data folder paths or file dates.")
+            sys.exit(0)
+            
+        print("\n--- Extracting Sample Item [0] from Train Split ---")
+        sample = None
+        for idx in range(len(train_set)):
+            sample = train_set[idx]
+            if sample is not None:
+                print(f"Successfully retrieved valid sample at index {idx}")
+                break
+        
+        if sample is None:
+            print("[ERROR] Iterated through dataset but all samples returned None (missing .tif files).")
+            sys.exit(1)
+
+        # 3. Print structural shape and value range diagnostics
+        print("\n--- Structural Dimension Diagnostics ---")
+        print(f"Static Layers Tensor   : {sample['static'].shape}  | Min: {sample['static'].min():.2f}, Max: {sample['static'].max():.2f}")
+        print(f"Single-Dynamic Tensor  : {sample['single_dynamic'].shape}  | Min: {sample['single_dynamic'].min():.2f}, Max: {sample['single_dynamic'].max():.2f}")
+        print(f"Dynamic Timeline Tensor: {sample['dynamic'].shape} | Min: {sample['dynamic'].min():.2f}, Max: {sample['dynamic'].max():.2f}")
+        print(f"Target Array Tensor    : {sample['target'].shape}  | Min: {sample['target'].min():.2f}, Max: {sample['target'].max():.2f}")
+
+        # 4. Generate a quick, lightweight matplotlib visual summary
+        print("\nRendering quick plotting visualization grid window...")
+        fig, axes = plt.subplots(1, 4, figsize=(16, 4))
+        
+        # Plot single static channel layer slice (e.g., Slope or Aspect index 0)
+        axes[0].imshow(sample['static'][0].numpy(), cmap='terrain')
+        axes[0].set_title(f"Static Layer [0]\n{sample['static'].shape[1:]}")
+        axes[0].axis('off')
+        
+        # Plot single dynamic timeline slice (e.g., NDVI index 0, at step Day 0)
+        axes[1].imshow(sample['dynamic'][0, 0].numpy(), cmap='YlGn')
+        axes[1].set_title(f"Dynamic Var[0] Day[0]\n{sample['dynamic'].shape[2:]}")
+        axes[1].axis('off')
+
+        # Plot secondary dynamic variable snapshot layer
+        axes[2].imshow(sample['single_dynamic'][0].numpy(), cmap='plasma')
+        axes[2].set_title(f"Single Dynamic [0]\n{sample['single_dynamic'].shape[1:]}")
+        axes[2].axis('off')
+        
+        # Plot target ground truth mask map
+        axes[3].imshow(sample['target'][0].numpy(), cmap='gray')
+        axes[3].set_title(f"Ground Truth Target\n{sample['target'].shape[1:]}")
+        axes[3].axis('off')
+        
+        plt.suptitle(f"SpatialTemporalDataset Sample Verification (Sequence Start: {sample['meta_first_date']})", fontsize=14)
+        plt.tight_layout()
+        plt.show()
+
+    except Exception as e:
+        print(f"\n[CRITICAL FAILURE] Diagnostic loop failed with error: {str(e)}")
+        import traceback
+        traceback.print_exc()

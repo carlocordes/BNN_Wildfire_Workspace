@@ -36,21 +36,12 @@ Upload data (will upload entire results directory, name accordingly):
 docker run -v "$(pwd)"/files:/app/files wildfire-model python scripts.s3_data_upload --path files/experiments --s3_prefix results
 ````
 
-# t006 Regiment
+# t007 Regimen
+
+### 1 & 2
+
 ```
-### 1
-```
-docker run  --device nvidia.com/gpu=all --ipc=host -v "$(pwd)"/files:/app/files:Z wildfire-model python main.py --config config_t006_1.yaml --exp_name t006_1 --auto_upload;
+docker run  --device nvidia.com/gpu=all --ipc=host -v "$(pwd)"/files:/app/files:Z wildfire-model python main.py --config config_t007_1.yaml --exp_name t007_1 --auto_upload;docker run  --device nvidia.com/gpu=all --ipc=host -v "$(pwd)"/files:/app/files:Z wildfire-model python main.py --config config_t007_2.yaml --exp_name t007_2 --auto_upload;
 ```
 
-### 2
-```
-docker run  --device nvidia.com/gpu=all --ipc=host -v "$(pwd)"/files:/app/files:Z wildfire-model python main.py --config config_t006_2.yaml --exp_name t006_2 --auto_upload;
-```
-
-
-### 3
-```
-docker run  --device nvidia.com/gpu=all --ipc=host -v "$(pwd)"/files:/app/files:Z wildfire-model python main.py --config config_t006_3.yaml --exp_name t006_3 --auto_upload;
-```
 

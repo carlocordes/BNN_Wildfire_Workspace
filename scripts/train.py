@@ -4,12 +4,11 @@ from src.models.vit.vit import STViT
 
 from scripts.dataset import SpatialTemporalDataset, skip_missing_collate_fn
 
-#External
+# External
 from pathlib import Path
 import time
 import argparse
 import logging
-
 
 import torch
 import torch.nn as nn
@@ -30,20 +29,20 @@ def build_model(cfg_model, cfg_data, device):
     )
     return model.to(device)
 
+
 # Evaluation
-def evaluate(model, loss_fn, cfg_training, cfg_path, mode : str, device):
+def evaluate(model, loss_fn, cfg_training, cfg_path, mode: str, device):
 
     dataset = SpatialTemporalDataset(cfg_path, split_type=mode)
 
     set_dataloader = DataLoader(
         dataset, 
         batch_size=cfg_training['batch_size'], 
-        shuffle=True,          # Freely shuffle items within the dataset
-        num_workers=4,         # Adjust based on CPU cores (reads 4 batches in parallel!)
-        pin_memory=True,       # Speeds up tensor transfers from CPU to GPU
+        shuffle=False,         
+        num_workers=4,         
+        pin_memory=True,       
         collate_fn=skip_missing_collate_fn
     )
-
 
     model.eval()
 
@@ -62,13 +61,11 @@ def evaluate(model, loss_fn, cfg_training, cfg_path, mode : str, device):
             dynamic_x = batch['dynamic'].to(device)
             targets = batch['target'].to(device)
 
-
-
             # Predict
             preds = model(
                 x_static=static_x,
                 x_dynamic=dynamic_x,
-                x_single_dynamic = single_dynamic_x
+                x_single_dynamic=single_dynamic_x
             )
 
             # Get loss
@@ -76,29 +73,23 @@ def evaluate(model, loss_fn, cfg_training, cfg_path, mode : str, device):
             total_loss += loss.item()
             valid_batches += 1
 
-    avg_loss = total_loss / valid_batches # Sum
-
-    model.train() # Back to train mode
-
+    avg_loss = total_loss / valid_batches if valid_batches > 0 else 0.0
+    model.train() 
     return avg_loss
 
+
 # Training
-def train(model, loss_fn, cfg_path : Path, cfg_training, device, writer, model_save_path):
+def train(model, loss_fn, cfg_path: Path, cfg_training, device, writer, model_save_path):
     
     # Optimizer
     optimizer = optim.AdamW(model.parameters(), lr=cfg_training["learning_rate"],
-                            weight_decay=cfg_training['weight_decay']) # TODO: Maybe replace with AdamW(lr, weight_decay)
+                            weight_decay=cfg_training['weight_decay']) 
     
-
-    # Break conditions
     patience = cfg_training['patience']
     epochs_without_improvement = 0
-
-
-    # Track the best loss to save the best model state
     best_loss = float('inf') 
 
-    model.train() # Set training mode
+    model.train() 
 
     logging.info(f'Loading dataset from {cfg_path}')
 
@@ -107,9 +98,9 @@ def train(model, loss_fn, cfg_path : Path, cfg_training, device, writer, model_s
     train_loader = DataLoader(
         train_dataset, 
         batch_size=cfg_training['batch_size'], 
-        shuffle=True,          # Freely shuffle items within the dataset
-        num_workers=4,         # Adjust based on CPU cores (reads 4 batches in parallel!)
-        pin_memory=True,       # Speeds up tensor transfers from CPU to GPU
+        shuffle=True,          
+        num_workers=4,         
+        pin_memory=True,       
         collate_fn=skip_missing_collate_fn
     )
 
@@ -122,36 +113,28 @@ def train(model, loss_fn, cfg_path : Path, cfg_training, device, writer, model_s
         optimizer,
         max_lr=max_lr,
         total_steps=total_steps,
-        pct_start=0.10,          # Spend the first 10% of training warming up
-        anneal_strategy='cos',   # Use a cosine curve to decay the learning rate
-        div_factor=25.0,         # Initial LR starts at max_lr / 25
-        final_div_factor=1000.0  # Final LR decays down to max_lr / 1000
-)
+        pct_start=0.10,          
+        anneal_strategy='cos',   
+        div_factor=25.0,         
+        final_div_factor=1000.0  
+    )
 
     logging.info("Starting training loop...")
 
-
     for epoch in range(cfg_training['num_epochs']):
-
-
         
         epoch_loss = 0.0
         valid_batches = 0
         
-        
         start_time = time.time()
         for batch_idx, batch in enumerate(train_loader):
-            # Timing values init
             data_time = time.time() - start_time
-            total_compute = 0
-            total_data = 0
 
-            if batch is None: continue # Skip if batch is empty due to missing data
-
+            if batch is None: 
+                continue 
             
-            logging.info(f'Epoch {epoch+1} | '
-                f'Processing batch {batch_idx + 1}'
-            )
+            if (batch_idx + 1) % 100 == 0 or batch_idx == 0:
+                logging.info(f'Epoch {epoch+1} | Processing batch {batch_idx + 1}/{len(train_loader)}')
             
             # Get data
             static_x = batch['static'].to(device)
@@ -165,7 +148,7 @@ def train(model, loss_fn, cfg_path : Path, cfg_training, device, writer, model_s
             preds = model(
                 x_static=static_x,
                 x_dynamic=dynamic_x, 
-                x_single_dynamic = single_dynamic_x
+                x_single_dynamic=single_dynamic_x
             )
 
             # Calculate loss
@@ -173,43 +156,35 @@ def train(model, loss_fn, cfg_path : Path, cfg_training, device, writer, model_s
 
             optimizer.zero_grad()
             loss.backward()
-            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0) # Add this line
+
+            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0) 
 
             optimizer.step()
-
             scheduler.step()
 
             epoch_loss += loss.item()
             valid_batches += 1
 
-            # Timing for writer
             compute_time = time.time() - compute_start
-            total_compute += compute_time
-            total_data += data_time
-            start_time = time.time() # Reset
+            start_time = time.time() 
 
-        train_loss = epoch_loss / valid_batches
+        train_loss = epoch_loss / valid_batches if valid_batches > 0 else 0.0
 
-        # Store time statistics
-        avg_data_time = data_time / valid_batches
-        avg_compute_time = compute_time / valid_batches
-
-        writer.add_scalar('Time/Data', avg_data_time, epoch)
-        writer.add_scalar('Time/Compute', avg_compute_time, epoch)
-
+        # Store time statistics (Scalar floats only - virtually zero memory)
+        writer.add_scalar('Time/Data', data_time, epoch)
+        writer.add_scalar('Time/Compute', compute_time, epoch)
 
         # Validate
-        val_loss = evaluate(model = model,
-                            loss_fn = loss_fn,
+        val_loss = evaluate(model=model,
+                            loss_fn=loss_fn,
                             cfg_training=cfg_training,
-                            cfg_path = cfg_path,
-                            mode = "val",
-                            device = device)
-
+                            cfg_path=cfg_path,
+                            mode="val",
+                            device=device)
 
         current_lr = optimizer.param_groups[0]['lr']
         
-        # Log and TensorBoard
+        # Log and TensorBoard scalars
         writer.add_scalar('Loss/Train', train_loss, epoch)
         writer.add_scalar('Loss/Validation', val_loss, epoch)
         writer.add_scalar('LearningRate', current_lr, epoch)
@@ -220,18 +195,13 @@ def train(model, loss_fn, cfg_path : Path, cfg_training, device, writer, model_s
             f"Val Loss: {val_loss:.6f}"
         )
         
-
         # Save model if validation loss improved
         if val_loss < best_loss:
-            
-            best_loss = val_loss # Update
-            epochs_without_improvement = 0 # Reset
+            best_loss = val_loss 
+            epochs_without_improvement = 0 
 
-            torch.save(model.state_dict(),
-                       model_save_path)
+            torch.save(model.state_dict(), model_save_path)
             logging.info(f"Validation improved. Saved model.")
-
-        # Continue
         else:
             epochs_without_improvement += 1
             logging.info(f"No validation improvement for {epochs_without_improvement} epoch(s).")
@@ -249,22 +219,21 @@ def train(model, loss_fn, cfg_path : Path, cfg_training, device, writer, model_s
 # ----------------------------
 def main(config_path: Path, experiment_path: Path):
     
-    # --- Setup Logging Directory and File ----
     exp_name = experiment_path.stem
+    experiment_path.mkdir(exist_ok=True, parents=True)
 
     # ---- Python Logging ----
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s [%(levelname)s] %(message)s",
         handlers=[
-            logging.FileHandler(experiment_path / "training.log"), # Save to file
-            logging.StreamHandler() # Print to console
+            logging.FileHandler(experiment_path / "training.log"), 
+            logging.StreamHandler() 
         ]
     )
     
     # ---- TensorBoard Writer ----
     writer = SummaryWriter(log_dir=str(experiment_path))
-
 
     # ---- Load config ----
     cfg = load_config(config_path)
@@ -277,49 +246,35 @@ def main(config_path: Path, experiment_path: Path):
     logging.info(f"Using {device} device")
 
     # ---- Build components ----
-
-    model = build_model(cfg_model = cfg_model, cfg_data = cfg_data, device = device)
-
+    model = build_model(cfg_model=cfg_model, cfg_data=cfg_data, device=device)
     loss_fn = nn.BCEWithLogitsLoss(pos_weight=torch.Tensor([cfg_training["pos_weight"]])).to(device)
 
-
     # --- Define Save Path ---
-    experiment_path.mkdir(exist_ok=True)
     model_save_path = experiment_path / f"{exp_name}_model_best.pt"
 
     # ---- Train ----
-    train(model = model,
-          loss_fn = loss_fn,
-          cfg_training = cfg_training,
+    train(model=model,
+          loss_fn=loss_fn,
+          cfg_training=cfg_training,
           cfg_path=config_path,
-          device = device,
-          writer = writer,
-          model_save_path = model_save_path)
+          device=device,
+          writer=writer,
+          model_save_path=model_save_path)
 
-
-    # Final test
-    model.load_state_dict(
-        torch.load(
-            model_save_path,
-            map_location=device
-        )
-    )
+    # Final test using best checkpointed spatial states
+    if model_save_path.exists():
+        model.load_state_dict(torch.load(model_save_path, map_location=device))
     
-
     # Evaluate on test data
-    test_loss = evaluate(model = model,
-        loss_fn = loss_fn,
-        cfg_training=cfg_training,
-        cfg_path = config_path,
-        mode = "test",
-        device = device)
+    test_loss = evaluate(model=model,
+                        loss_fn=loss_fn,
+                        cfg_training=cfg_training,
+                        cfg_path=config_path,
+                        mode="test",
+                        device=device)
 
-
-    # Log and write
     logging.info(f"Final Test Loss: {test_loss:.6f}")
     writer.add_scalar("Loss/Test", test_loss)
-
-    # Close the TensorBoard writer
     writer.close()
 
 
@@ -329,8 +284,4 @@ if __name__ == '__main__':
     parser.add_argument("--experiment_path", type=Path, required=True)
 
     args = parser.parse_args()
-    main(experiment_path=args.experiment_path,
-         config_path=args.config_path)
-
-    # Example usage:
-    # uv run -m scripts.train --config configs/project.yaml --datasetname test.pt
+    main(experiment_path=args.experiment_path, config_path=args.config_path)
