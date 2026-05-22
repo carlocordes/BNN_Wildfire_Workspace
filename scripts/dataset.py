@@ -11,36 +11,23 @@ from omegaconf import OmegaConf
 def skip_missing_collate_fn(batch):
     """
     Filters out any 'None' entries caused by missing files during sampling.
-    Prints debugging info for valid batches, then returns stacked data.
     """
-    # Remove all None entries from this batch slice
     batch = [sample for sample in batch if sample is not None]
-    
-    # If the batch is completely empty, return None to safely bypass it
     if len(batch) == 0:
-        #print("[DEBUG] Batch is entirely empty due to missing files. Skipping...")
         return None
-        
-    # --- DEBUGGING PRINT ---
-    # Extract the first date of the first sample in this current batch
-    first_date_of_first_sample = batch[0]['meta_first_date']
-    #print(f"[DEBUG] Processing batch starting with sample date: {first_date_of_first_sample} (Batch size: {len(batch)})")
-    # -----------------------
-
-    # Use PyTorch's default collate engine to stack the remaining samples
     return default_collate(batch)
 
 
 class SpatialTemporalDataset(Dataset):
     def __init__(self, config_path: Path, split_type: str = "train"):
         """
-        Initializes dataset indices and structural metadata based on configuration limits.
+        Initializes dataset tracking by explicit Out-of-Time calendar blocks.
         """
         self.cfg = OmegaConf.load(config_path)
         self.cfg_data = self.cfg['data_paths']['processed']
         cfg_temporal = self.cfg['data']['temporal_extent']
         
-        # Track channel source paths
+        # Channel source paths
         self.sample_base_paths = [
             Path(self.cfg_data['NDVI']),
             Path(self.cfg_data['NDWI']),
@@ -63,22 +50,23 @@ class SpatialTemporalDataset(Dataset):
             Path(self.cfg_data['roads'])
         ])
 
-        # Generate complete date sequences across the timeline extent
+        # Generate complete date sequences across the entire timeline extent
         all_sequences = self._produce_timeframes(cfg_temporal)
         
-        # Segment indices into train/val/test slices based on configured proportions
-        n = len(all_sequences)
-        idx1 = round(n * self.cfg['training']['train_size'])
-        idx2 = round(n * (1.0 - self.cfg['training']['val_size']))
-        
+        # ==========================================
+        # FIXED: HARD CHRONOLOGICAL BLOCK SPLITTING
+        # ==========================================
+        # Train: 2019-2023 | Val: 2024 | Test: 2025
         if split_type == "train":
-            self.sequences = all_sequences[:idx1]
+            self.sequences = [s for s in all_sequences if s['year'] in [2019, 2020, 2021, 2022, 2023]]
         elif split_type == "val":
-            self.sequences = all_sequences[idx1:idx2]
+            self.sequences = [s for s in all_sequences if s['year'] == 2024]
         elif split_type == "test":
-            self.sequences = all_sequences[idx2:]
+            self.sequences = [s for s in all_sequences if s['year'] == 2025]
         else:
             raise ValueError(f"Unknown split_type: {split_type}")
+
+        print(f"[DATASET INFO] Created {split_type} split with {len(self.sequences)} samples.")
 
     def _produce_timeframes(self, cfg_temporal):
         sequence_extent = cfg_temporal['sample_extent'] + cfg_temporal['target_extent'] + cfg_temporal['lead_time']
@@ -97,9 +85,11 @@ class SpatialTemporalDataset(Dataset):
             target_end = target_start + timedelta(days=cfg_temporal['target_extent'] - 1)
             target = pd.date_range(start=target_start, end=target_end, freq=f'{cfg_temporal["day_interval"]}D')
 
+            # We use the beginning of the observation sequence to determine its block year assignment
             sequences.append({
                 'sample': sample.strftime("%Y-%m-%d").tolist(),
-                'target': target.strftime("%Y-%m-%d").tolist()
+                'target': target.strftime("%Y-%m-%d").tolist(),
+                'year': sample_start.year 
             })
         return sequences
 
@@ -115,12 +105,7 @@ class SpatialTemporalDataset(Dataset):
         return len(self.sequences)
 
     def __getitem__(self, idx):
-        """
-        Asynchronously called by DataLoader background workers to extract one data unit.
-        Returns None gracefully if any target file does not exist on disk.
-        """
         timeframe = self.sequences[idx]
-        
         try:
             # 1. Dynamic sequence channels
             channel_sample_tensors = []
@@ -130,7 +115,6 @@ class SpatialTemporalDataset(Dataset):
                     fp = path / f"{t}.tif"
                     if not fp.exists():
                         raise FileNotFoundError(f"Missing sample file: {fp}")
-                        
                     with rasterio.open(fp) as src:
                         time_sample_tensors.append(torch.from_numpy(src.read(1)).float())
                 channel_sample_tensors.append(torch.stack(time_sample_tensors, dim=0))
@@ -143,7 +127,6 @@ class SpatialTemporalDataset(Dataset):
                 fp = path / f"{last_time_of_sample}.tif"
                 if not fp.exists():
                     raise FileNotFoundError(f"Missing single dynamic file: {fp}")
-                    
                 with rasterio.open(fp) as src:
                     time_single_dynamic_tensors.append(torch.from_numpy(src.read(1)).float())
             single_dynamic_data = torch.stack(time_single_dynamic_tensors, dim=0)
@@ -154,7 +137,6 @@ class SpatialTemporalDataset(Dataset):
                 fp = self.target_base_path / f"{t}.tif"
                 if not fp.exists():
                     raise FileNotFoundError(f"Missing target file: {fp}")
-                    
                 with rasterio.open(fp) as src:
                     time_target_tensors.append(torch.from_numpy(src.read(1)).float())
             time_target_data = torch.stack(time_target_tensors, dim=0)
@@ -164,15 +146,7 @@ class SpatialTemporalDataset(Dataset):
                 'static': self.base_static_tensor,
                 'single_dynamic': single_dynamic_data,
                 'target': time_target_data,
-                'meta_first_date': timeframe['sample'][0] # Included to read inside collate_fn
+                'meta_first_date': timeframe['sample'][0]
             }
-
-        except FileNotFoundError as e:
-            # Drop sample if files are missing; collate_fn handles cleaning up the None
+        except FileNotFoundError:
             return None
-        
-
-if __name__ == '__main__':
-    dataset = SpatialTemporalDataset('files/configs/fix.yaml', "train")
-
-    print(dataset.sequences[0])
