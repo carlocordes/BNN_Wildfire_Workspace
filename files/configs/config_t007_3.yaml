@@ -14,7 +14,7 @@ data:
 
     sequence_period : 4 # Da between respective sequences
 
-    sample_extent : 10 # Total time of sample
+    sample_extent : 3 # Total time of sample
     sample_period : 1 # Time between images in sample
 
     target_extent : 14
