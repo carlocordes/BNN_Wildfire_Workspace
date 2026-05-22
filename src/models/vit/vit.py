@@ -80,7 +80,7 @@ class STViT(nn.Module):
                 d_model=self.embedding_dim,   # Increase this via config (e.g., 256 or 512)
                 nhead=num_heads,
                 dim_feedforward=self.embedding_dim * 4,
-                dropout=0.2,
+                dropout=0.35,
                 activation="gelu",
                 batch_first=True,
                 norm_first=True
