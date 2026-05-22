@@ -29,24 +29,6 @@ data:
 ```
 )
 
-== Data <sec:data>
-- *Module: *
-
-
-== Data Acquisition & Processing
-
-
-=== Earth Engine & Harmonization
-
-
-=== Feature Engineering
-
-
-=== Ground Truth
-
-
-
-
 == Dataset Construction
 === Timeframe Configuration <subsec:time_config>
 A section of the research objective is to asses the influences of the temporal scopes of both data and predictions. Both can be variably adjusted depending on the desired test case. As we handle temporally dynamic datasets we need to define how timesteps of samples are represented in the dataset. To ensure consistency in naming these, we here declare a series of term definitions relevant for this step:
@@ -67,12 +49,12 @@ A section of the research objective is to asses the influences of the temporal s
 ) <fig:temporal_scope>
 #todo(stroke : orange)[Update figure of timestamp configurations]
 
-Every sample is constructed by 3 different kinds of data:
+Every sample is constructed by 3 different kinds of data, that are read, packaged together and channeled into the model:
 - Static: equivalent in every sample, describes non-variable data (e.g. terrain)
 - Dynamic: time-series data consisting of multiple images (e.g. wind)
-- Single-dynamic: dynamic data that is considered to be less temporally dependent and assumed consistent over the extent of the sample (e.g. 30 day precipitation sum)
+- Single-dynamic: dynamic data that is considered to be less temporally dependent and assumed static over the extent of the sample (e.g. 30 day precipitation sum)
 
-@fig:temporal_scope illustrates the terms defined above. It shows two consecutive sequences as well as their their respective samples and targets. It shows the temporal division of the sample into subsequent timesteps. The distance between sample and target corresponds to the above definition of #emph[lead-time.]
+@fig:temporal_scope illustrates the terms defined above. It shows two consecutive sequences as well as their their respective samples and targets. It shows the temporal division of the sample into subsequent timesteps. The distance between sample and target corresponds to the above definition of #emph[lead-time].
 
 The configuration file that belongs to a model training governs the total time of interest and all parameters defining the temporal relationship of input data. The dataset builder then generates a set of timestamps as governed by the rest of the temporal configurations and iterates through the respective file for every module. Sequences with missing images are skipped entirely to ensure consistency. These dynamic modules are accompanied by the static data, which is the same in every sample. The result is a set of sample/target combinations spanning the entire domain of temporal interest.
 
@@ -123,6 +105,7 @@ $ w  = mat(
 The convolution weights are learnable and are only shared between samples of the same module. Every module is assigned an independent convolution operation and individual weights.
 
 === Temporal embedding
+#todo(stroke :green)[Update with new modul structure]
 The model architecture demands a separate routing of static and dynamic data channels. All dynamic modules with a more than one time steps receive an implicit temporal encoding that is an extension to the one described in @subsec:encoding. The objective of this is to give patches that describe the same physical area in different time steps a closer connection to one another. This is done by treating the different time steps for one module together. The single-image 2D convolution is replaced by a 3D convolution that treats the series of images of timesteps $t$ as a 3-dimensional set of values and projects it into the embedding dimension $d_(e m b e d)$:
 
 $ RR ^ (t times d_(p a t c h) times d_(p a t c h)) ->  RR ^ (d_(e m b e d)) $ <eq:3d_conv>
@@ -242,17 +225,14 @@ It is of course possible to make predictions for every patch. This is however no
     table.header(
       [ *Module Name* ], [ *Parameter Count* ]
     ),
-    [static_embeds], [98,688],
-    [dynamic_embeds], [1,311,232],
-    [static_encoders], [1,779,072] ,
-    [dynamic_encoders], [2,372,096],
-    [static_mixer], [49,280],
-    [dynamic_mixer], [65,664],
-    [module_fusion], [66,048],
+    [static_embeds], [49,280],
+    [dynamic_embeds], [57,472],
+    [join_backbone], [1,586,176],
+    [sequence_projector], [16,512],
     [decoder], [92,481],
-    [Standalone Parameters], [896],
+    [Standalone Parameters], [1,536],
     table.hline(),
-    [TOTAL], [5,835,457],
+    [TOTAL], [1,803,457],
   ),
   caption : "Model Parameters per class
    "
@@ -315,14 +295,20 @@ Parameter choice of the positive weight $w$ is determined by the entirety of the
 
 
 
-=== Back Propagation & Optimizer <subsec:backprop>
-Having obtained a loss for a pair of data and target, the penultimate step requires computing the required weight updates due to the loss. PyTorch has an efficient implementation of this via its *optimizer* modules, chosen here is the Adam optimizer, a stochastic algorithm for first-order gradient-based optimization 
-#citep(<optimizer_adam>)#citep(<pytorch_optim>). The optimizer has access to the model parameters as well as computed. For one set of parameters $theta_t$ the optimizer computes:
+=== Back Propagation & Gradient Descent <subsec:backprop>
+The goal of the training regimen is to produce the combination of model parameters that produces the least amount of loss, more specifically a minimal validation loss. In order to achieve this, the loss is evaluated against all model parameters after every batch. This optimization problem can be thought of a local or global minimum in the #emph[loss-landscape] of $L(w_1, w_2 ...w_i)$ To a model parameter combination that produces a lower loss, the following steps work to descend along the steepest gradient of this landscape. To do this, we calculate the gradient of the loss due to each model parameter: $ g_t = (partial L) / (partial w_i) $
 
+This tries to approximate the extent to which the loss, which describes the discrepancy between prediction and target, is due to this specific parameter. Parameters with a high gradient shall be updated more aggressively than those being responsible for little loss. The method for updating these model parameters is accompanied by a further parameter, the learning rate $eta$. This dimensionless value scales the overall aggresiveness of model updates. It's value heavily influences the stability of the training process. If chosen inadequately, the model may never find an equilibrium state. The updated weight parameters $theta$ are sums of their original values and the loss gradient, scaled by the learning rate:
+$ theta_(t+1) = theta_t + eta g_t $ <eq:weight_update>
 
-$ theta_(t+1) = theta_t + nabla_(theta)L $
+=== Optimizer & Learning Rate Scheduler
+Pytorch uses to further implementation to aid this model weight update process. First is the learning rate scheduler, in this case we use the OneCycle learning rate scheduler. This system is designed to dynamically change the learning rate to a dynamic one that changes with every epoch ($eta_t$). The job of this specific scheduler is to start with a lower learning rate and grant the system so-called warm-up epochs. This caters to one specic problem that is common in machine learning model training and specifically one of this kind which deals with high class imbalance. The model weights, as initialized before the first training loop are random and represent no coherence with the data or reality. Applying a full scale learning rate to these can lead to erratic loss jumps in subsequent epochs. Using the earlier landscape analogy this corresponds to overshooting a downhill section in a landscape. Once the training process has found its momentum, the scheduler will gradually increase the learning rate to a higher value. This is the stage in which the gradient descent process has gained its momentum and we require computed loss gradients to have maximum effects on the model parameters. It is this exact stage in which the model learns most about its tokens. As the loss function approaches its local minimum the scheduler ideally decreases the learn rate again, as not to overshoot the minimum. The effect of this is a user setting and is proportional to the total amount of epochs the system is in training for.
 
-A baseline learning rate is defined via the project configuration and passed to the optimizer class. It uses this as a baseline value and adjusts it adaptively in order to stabilise and accelerate parameter convergence.
+Another crucial implementation aiding training performance is the optimizer. Here chosen was the #emph[AdamW] optimizer. This creates a valuable synergy with the learning rate scheduler to produce and enhanced image of how weights should be updated, following their loss computation. Along with the gradient a weight produces for the loss, the optimizer tracks momentum vectors $accent(m, hat)_i$ for each weight over the course of a few epochs. The logic insinuates that a parameter improving in the same trajectory for subsequent epochs, will likely continue in the same direction. It can therefore confidently receive a larger update as compared to a parameter that has recently stagnated or fluctuated. Together with the scheduled learning rate the weight updates postulated in @eq:weight_update becomes:
+
+$ theta_(i+1) = theta_i - eta_t dott (accent(m, hat) / (sqrt(accent(v, hat)_t) + epsilon) +  lambda theta_i) $
+
+Another parameter $accent(v, hat)_i$ tracks the erraticism a parameter shows during epochs. Those values behaving unpredictably will receive suppressed updates while those showing consistency will be rewarded greater updates #citep(<optimizer_adam>)#citep(<pytorch_optim>).
 
 
 === Test Cases
