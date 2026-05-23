@@ -7,6 +7,5 @@
 /deliverables/*/*
 #!/deliverables/*/*.pdf
 
-/thesis/*.pdf
 thesis/.DS_Store
-code/te.py
+

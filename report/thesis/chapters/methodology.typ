@@ -2,11 +2,10 @@
 #set heading(numbering: "1.")
 
 = Methodology <chap:methodology>
-#todo(stroke : green)[Define key terms (maybe somewhere else)]
-
-#todo(stroke : green)[Concept: apply idea of embeddings to "climate vector space"]
+This section provides an overview of the methodological choices made in the investigation. First, a short account of the system overview is given, before an account for the construction of data into datasets is made. Further, a complete walk-throug of the model architecure is given. Finally, the integration of the model into a training workflow is explained.
 
 == Workflow & System Overview <sec:method>
+#todo(stroke : red)[work in progress] 
 #figure(
 ```yaml
 data:
@@ -71,7 +70,7 @@ In order to motivate the structure of the here applied transformer, this section
 
 
 
-=== Encoding <subsec:encoding>
+=== Spatial Embedding <subsec:encoding>
 The initial objective of the transfomer model revolves around turning input data into tokens via patch embedding. The patch size, a model hyperparameter, defines the pixel extent of square patches every input image is divided into. As we handle only single-band data we treat the image as a grid of height and width: $h times w$. 
 
 // Reflective padding (h_pad x w_pad)
@@ -105,21 +104,22 @@ $ w  = mat(
 The convolution weights are learnable and are only shared between samples of the same module. Every module is assigned an independent convolution operation and individual weights.
 
 === Temporal embedding
-#todo(stroke :green)[Update with new modul structure]
-The model architecture demands a separate routing of static and dynamic data channels. All dynamic modules with a more than one time steps receive an implicit temporal encoding that is an extension to the one described in @subsec:encoding. The objective of this is to give patches that describe the same physical area in different time steps a closer connection to one another. This is done by treating the different time steps for one module together. The single-image 2D convolution is replaced by a 3D convolution that treats the series of images of timesteps $t$ as a 3-dimensional set of values and projects it into the embedding dimension $d_(e m b e d)$:
+The model architecture demands a separate routing of static and dynamic data channels. All dynamic modules with a more than one time steps receive a temporal encoding that is an extension to the one described in @subsec:encoding. The objective of this is to give patches that describe the same physical area in different time steps a closer connection to one another. This is done by treating the different time steps for one module together. The single-image 2D convolution is replaced by a 3D convolution that treats the series of images of timesteps $t$ as a 3-dimensional set of values and projects it into the embedding dimension $d_(e m b e d)$:
 
 $ RR ^ (t times d_(p a t c h) times d_(p a t c h)) ->  RR ^ (d_(e m b e d)) $ <eq:3d_conv>
 
 The convolutional operation is analogous to @eq:2dkernel for a static embedding with a kernel of dimension:
 
-$ w in RR ^ (d_(e m b e d) times t times P ^ 2) $
+$ w in RR ^ (d_(e m b e d) times 1 times P ^ 2) $
 
-In essence, the image series is partitioned into tubelets instead of patches. These tubelets include the information of one patch for all time steps together in one. This information is then fused into one embedding through the convolution operation. As this is carried out with independent convolutionary weights for all modules we call this step the implicit temporal embedding. Tokens describing temporally dynamic patches are projected into the same embedding dimension as static ones.
+In essence, this steps results in a token for every patch in every timestep of every image. This effectively patches every timestep in every module independently.The objective here is to prevent the immediate blending of time steps, as this is the objective of the transformer layers at a later stage.
 
-#todo(stroke : orange)[Figure of tubelet embedding]
+
 
 === Spatial Embedding
-Having obtained a set of embeddings for every image in the model input, we now induce spatial relationships between patches. The spatial embeddings is applied to both temporally static and dynamic embeddings. The idea is to assert a learnable idea of proximity from one patch to another. As wildfire is a localized phenomena the spatial embedding the objective here is to give neighboring patches a strong correlation. Distant patches, while sharing lower correlation, can still influence one another, with limited effect. The important difference to a convolution here is that we do not simply rule out distant relationships, but keep them contained. This step sets up the relationships of patch embeddings as it will later be used in the attention processes, in which patches with more similar spatial embeddings will more likely attend to one another. 
+Having obtained a set of embeddings for all images of varying modalities in the model input,this part of the transformer architecture intends to introduce spatial and temporal relationships between the patches called #emph[embeddings]. These greatly influence the magnitude with which patches learn from each other.
+
+The spatial embedding is applied to every patch regardless of it having a temporal dependency or not. The idea is to assert a learnable idea of proximity from one patch to another. As wildfires are localized phenomena, the the objective of the spatial embedding here is to give neighboring patches a strong correlation. Distant patches, while sharing lower correlation, can still influence one another, with limited effect. The important difference to a convolution here is that we do not simply rule out distant relationships, but keep them contained. Rather than imposing a relationship on the transformer, we give it rough guidelines and freedom to give high weight to the relationship even between distant patches. Having created a notion of spatial similarity is crucial for the later attention process in which more similar patches will conduct higher weighted attention with one another.
 
 In order to create such a relationship we come up with an individual positional encoding for every patch that is added onto each embedding:
 
@@ -149,11 +149,36 @@ Given the multitude of modes we can form very individualised encodings for all p
   caption: [Cosine similarity of patches relative to central anchor-patch at varying embedding dimension],
 ) <fig:embedding_simil>
 
-Having embedded all tokens of different modalities into embedding space, we additionally give each token a modality tag. A tag is unique per module and is a learnable parameter with the objective to give the attention heads a clearer idea of where tokens came from. Throughout the learning process the transformer will be able to differentiate between different modules as the tag injects a numeric meaning to all tokens. The complete spatial embedding process, with the additional static tag $arrow(s)_m$ for each module $m$ thus takes form:
-$ arrow(z)^(m)_n = arrow(e)^("  m")_"token, n" + arrow(e)_"pos" + arrow(s)_m $ 
 
+=== Temporal Embedding
+Weighing like patches of the same modality against each other should be entirely up to the transformer model. Afterall it is the idea to find nuanced temporal relationships both within a modularity and between pairs of them. We therefore do not constrain the temporal relationships with weights but much rather provide an additional encoding of time which is added to every token that stems from a dynamic module. Used here is an encoding of the julian day, which is simply an integer number of the day of the year (0-365). To make use of this in the best way, we encode the julian day so that it captures the true nature of the climatological conditions: its cyclical nature. The embedding of a patch from a day in December should be close to one in the beginning of January, despite their julian day being far apart.
+
+Making such an embedding is realized through a two-step process, first mapping the julian day $J_t$ into a clock-like cyclical two-dimensional space and then translating it two the embedding dimension. The translation into a cyclical representation $v_t$ is done using a sinusoidal projection via:
+
+$ v_t = [sin((2 pi J_t) / (365.25)), cos((2 pi J_t) / (365.25))] $
+
+#figure(
+  image("../figs/julian_day.png"),
+  caption : "Julian Day encoding into 2D vector space"
+) <fig:julian_day>
+
+@fig:julian_day shows the representation of each julian day in a two-dimensional vector space, effectively capturing cyclical relationships of months even with distant julian days. The next step entails moving this to to the same embedding dimension which the tokens occupy. Similarly to convolution processes shown earlier, we apply a learnable weight matrix to this vector representation projecting these values into $RR^(d_"embed")$:
+
+$ arrow(e)_"t" = W_(2 times d_"embed") dot arrow(v)_t + arrow(b) $
+
+Having embedded all tokens of different modalities into embedding space, we additionally give each token a modality tag $arrow(s)_m$. A tag is unique per module and is a learnable parameter with the objective to give the attention heads a clearer idea of where tokens came from. Throughout the learning process the transformer will be able to differentiate between different modules as the tag injects a numeric meaning to all tokens.
+
+The final transformer-ready embeddings for static and dynamic tokens are additions of their individual spatial, temporal and static embeddings like so:
+
+- Static Embedding: $arrow(z)^(m)_n = arrow(e)^("  m")_"token, n" + arrow(e)_"pos" + arrow(s)_m$
+
+- Temporal Embedding: $arrow(z)^(m)_(n,t) = arrow(e)^("  m")_"token, n" + arrow(e)_"pos" + arrow(e)_"t" + arrow(s)_m$
+
+Simply adding large vectors to our representations of patches might seem counter intuitive at first, however it is crucial to remember that the representations of data modularities are learnable. The longer the transformer architecture trains, it knows to contextualize a patch of precipitation data differently, depending on the time of year. The most elegant analogy to this process is music. If the raw encoding of a patch are analogous to a melody, the positional and temporal encoding represent the harmony accopanying it. Music is propagated as the sums of interfering frequencies, however they are discretely distinguishable to the human ear. The same is true for the transformer, it learns to contextualize the raw encoding (melody) given an extra set of information, the embeddings (harmony).
 
 === Attention Layers
+
+#todo(stroke :green)[Update]
 Having obtained a set of tokens from the batch of the dataset, the next step dictates how these tokens communicate information between each other and consequently update their embeddings. The core priniples demanded from this step are:
 
 - Module isolation
@@ -277,7 +302,7 @@ To promote generalization of a trained model, we use a train-validation-test spl
 
 === Loss Function
 
-Succeding a succesfull forward pass, we evaluate the accuracy of the model by comparing its prediction to the ground truth as defined by a loss function. The main specification the loss function has to adhere to in this problem set-up is the type of target domain in its binary form (fire / no fire). The other is the lopsidedness of our target categories. Due to the very rare nature of fire events, most of the target data describes no-fire, or to the model: zeros. We therefore choose a categorical loss function that in addition to being sensitive to class imbalances is scaleable by a custom weight, the Binary Cross-Entropy (WBCE) loss function. It depends on the model prediction $p_i$, the ground truth $y_i$ and positive weight $w$. The loss function sums $N$ comparisons in total, one for every pixel in the ground truth.
+Succeding a succesfull forward pass, we evaluate the accuracy of the model by comparing its prediction to the ground truth as defined by a loss function. The main specification the loss function has to adhere to in this problem set-up is the type of target domain in its binary form (fire / no fire). The other is the lopsidedness of our target categories. Due to the very rare nature of fire events, most of the target data describes no-fire, or to the model: zeros. We therefore choose a categorical loss function that in addition to being sensitive to class imbalances is scaleable by a custom weight, the weighted Binary Cross-Entropy loss function (WBCE). It depends on the model prediction $p_i$, the ground truth $y_i$ and positive weight $w$. The loss function sums $N$ comparisons in total, one for every pixel in the ground truth.
 
 $ L =  -1 / N sum_(i = 1)^N w y_i log(p_i) + (1-y_i)log(1-p_i) $ <eq:wbce>
 
@@ -296,7 +321,7 @@ Parameter choice of the positive weight $w$ is determined by the entirety of the
 
 
 === Back Propagation & Gradient Descent <subsec:backprop>
-The goal of the training regimen is to produce the combination of model parameters that produces the least amount of loss, more specifically a minimal validation loss. In order to achieve this, the loss is evaluated against all model parameters after every batch. This optimization problem can be thought of a local or global minimum in the #emph[loss-landscape] of $L(w_1, w_2 ...w_i)$ To a model parameter combination that produces a lower loss, the following steps work to descend along the steepest gradient of this landscape. To do this, we calculate the gradient of the loss due to each model parameter: $ g_t = (partial L) / (partial w_i) $
+The goal of the training regimen is to produce the combination of model parameters that produces the least amount of loss, more specifically a minimal validation loss. In order to achieve this, the loss is evaluated against all model parameters after every batch. This optimization problem can be thought of a local or global minimum in the #emph[loss-landscape] of $L(w_1, w_2 ...w_i)$ to a model parameter combination that produces a lower loss, the following steps work to descend along the steepest gradient of this landscape. To do this, we calculate the gradient of the loss due to each model parameter: $ g_t = (partial L) / (partial w_i) $
 
 This tries to approximate the extent to which the loss, which describes the discrepancy between prediction and target, is due to this specific parameter. Parameters with a high gradient shall be updated more aggressively than those being responsible for little loss. The method for updating these model parameters is accompanied by a further parameter, the learning rate $eta$. This dimensionless value scales the overall aggresiveness of model updates. It's value heavily influences the stability of the training process. If chosen inadequately, the model may never find an equilibrium state. The updated weight parameters $theta$ are sums of their original values and the loss gradient, scaled by the learning rate:
 $ theta_(t+1) = theta_t + eta g_t $ <eq:weight_update>
@@ -306,9 +331,14 @@ Pytorch uses to further implementation to aid this model weight update process. 
 
 Another crucial implementation aiding training performance is the optimizer. Here chosen was the #emph[AdamW] optimizer. This creates a valuable synergy with the learning rate scheduler to produce and enhanced image of how weights should be updated, following their loss computation. Along with the gradient a weight produces for the loss, the optimizer tracks momentum vectors $accent(m, hat)_i$ for each weight over the course of a few epochs. The logic insinuates that a parameter improving in the same trajectory for subsequent epochs, will likely continue in the same direction. It can therefore confidently receive a larger update as compared to a parameter that has recently stagnated or fluctuated. Together with the scheduled learning rate the weight updates postulated in @eq:weight_update becomes:
 
-$ theta_(i+1) = theta_i - eta_t dott (accent(m, hat) / (sqrt(accent(v, hat)_t) + epsilon) +  lambda theta_i) $
+$ theta_(i+1) = theta_i - eta_t dot (accent(m, hat) / (sqrt(accent(v, hat)_t) + epsilon) +  lambda theta_i) $
 
 Another parameter $accent(v, hat)_i$ tracks the erraticism a parameter shows during epochs. Those values behaving unpredictably will receive suppressed updates while those showing consistency will be rewarded greater updates #citep(<optimizer_adam>)#citep(<pytorch_optim>).
 
 
-=== Test Cases
+== Experiments
+
+#todo(stroke : green)[Enhance descriptions]
+1. Varying sample length - how does temporal depth influence climatological contextualization
+2. Lead time horizon stress test: how does prediction vary under extensive lead time (future prediction)?
+3. Ablation studies - zeroing out weights in embedings, tracking prediction performance and consequently feature importance

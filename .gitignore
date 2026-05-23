@@ -22,3 +22,5 @@ files/*
 files/configs/fix.yaml
 
 mnt/
+exports/dataset_viewer/all_samples.png
+exports/julian_day_enc/julian_day.png
