@@ -88,7 +88,7 @@
 
 //#include "chapters/introduction.typ"
 //#include "chapters/relatedwork.typ"
-//#include "chapters/data.typ"
+#include "chapters/data.typ"
 #include "chapters/methodology.typ"
 
 //-- back-matter

@@ -7,6 +7,8 @@ from pathlib import Path
 import numpy as np
 import string
 
+plt.rcParams['savefig.dpi'] = 300
+
 # -----------------------------
 # Paths
 # -----------------------------
