@@ -153,7 +153,7 @@ Given the multitude of modes we can form very individualised encodings for all p
 === Temporal Embedding
 Weighing like patches of the same modality against each other should be entirely up to the transformer model. Afterall it is the idea to find nuanced temporal relationships both within a modularity and between pairs of them. We therefore do not constrain the temporal relationships with weights but much rather provide an additional encoding of time which is added to every token that stems from a dynamic module. Used here is an encoding of the julian day, which is simply an integer number of the day of the year (0-365). To make use of this in the best way, we encode the julian day so that it captures the true nature of the climatological conditions: its cyclical nature. The embedding of a patch from a day in December should be close to one in the beginning of January, despite their julian day being far apart.
 
-Making such an embedding is realized through a two-step process, first mapping the julian day $J_t$ into a clock-like cyclical two-dimensional space and then translating it two the embedding dimension. The translation into a cyclical representation $v_t$ is done using a sinusoidal projection via:
+Making such an embedding is realized through a two-step process, first mapping the julian day $J_t$ into a clock-like cyclical two-dimensional space and then translating it into the embedding dimension. The translation into a cyclical representation $v_t$ is done using a sinusoidal projection via:
 
 $ v_t = [sin((2 pi J_t) / (365.25)), cos((2 pi J_t) / (365.25))] $
 
