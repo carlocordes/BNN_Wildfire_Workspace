@@ -59,10 +59,57 @@ A fundamental breakthrough was made in modern technology with the transformer ar
 
 
 === Architecture
+
 // Tokens, Embeddings, Idea of vector spaces
+The core idea behind the transformer is to form predictions given an input, depending on the application. As mentioned above, the inital design involved translating text between languages not just word for word, but with strong relational semantic meaning. This same concept was later adapted for a variety of different tasks, perhaps most prominently text generation  tasks. Modern chatbots use this very mechanism to from educated prediction of outputs given a user input sequence.
+
+Generative Transformers that produce either images of text from input sequences are pre-trained, meaning their weights are set. Under the hood are various matrix multiplication processes that turn inputs into outputs. Crucial for this to work however is the processing of input sequences into a stucture the transformer architecture can understand. To do this, we consider partitions of the input as so-called #emph[tokens] @embeddings as shown in @fig:tokenization.
+
+#figure(
+  rect[
+    #strong[Raw: ] The capital of Italy is \
+    #strong[Tokens:] [The] [capital] [of] [Italy] [is]
+  ],
+  caption: "Tokenization of an input"
+) <fig:tokenization>
+
+Each of the input tokens is then processed via a process called embedding. This simply assigns every token to a high dimensional vector:
+$ "Italy" -> arrow(e) =  mat(e_1; e_2; e_3; dots.v;) in RR ^(d_"embed") $
+
+To an untrained model this might appear like a random projection of a word into a vector, however this process is learnable, meaning that the way a token might be transformed into an embedding is optimized as a model trains. As a result, trained models gather their entire understanding of reality by assigning many tokens each a distinct position in a very high dimensional embedding vector space. A trained model not only has a position for every term in its vocabulary, but the relative position of these can directly embody similarities of terms in plain language. For example, consider a pre-trained transformer that holds embeddings for the terms #emph[brother], #emph[sister], #emph[aunt] and #emph[uncle] in @fig:embedding_relative.
+
+#figure(
+  image("../figs/2d_vectors_and_relative.png"),
+  caption : "Oragnization of tokens into vector space and relative positional meanings"
+) <fig:embedding_relative>
+
+#todo(stroke : orange)[figure of relational terms and reference]
+
+The imporant notion to realize is that a trained transformer is able to relate certain terms to one another. Subtracting the vector of #emph[aunt] and #emph[uncle] will yield a similar vector to the one when applying this logic to #emph[brother] and #emph[sister], a vector that to the transformer encodes a logic of relative gender. Furthermore, taking the dot product of two vectors will provide information about similarity of these two vectors. Analogously to vector geometry, the dot product of two unit vectors pointing in different directions will yield zero: 
+$ accent(e, hat)_i dot accent(e, hat)_j = delta_(i j) = {1 "if" i = j, "else" 0 $
+Suppose such vectors were describing directions in a coordinate system. A zero dot-product dictates that these two vectors are very dissimilar, as they encode different directions. The same applies to the embedding dimension. A large dot product of two embeddings signifies similarity between these terms @3b1b-transformers.
+
+
 
 === Attention mechanism
 // Key, Query, Value
+Embedding the tokens of an input sequence like in @fig:tokenization, for now only gives a vectoral meaning to each individual one, rather than as a complete input sequence. However, as the core concept here is to make predictions from an input sequence as a whole, a mechanism relating the meaning of each token into a conglomerate understanding is neccessary. This exact problem is solved by the concept attention, a powerful matrix encoder that not only serves as the basis of this project, but is responsible for the immense growth in the artificial intelligence sector @3b1b-attention. 
+
+Despite being powerful, this concept is very simple. It determines the relative importance of all embeddings to all other embeddings in the input and subsequently updates each embedding, depending on this relative importance. This step can be conceptualized as tokens absorbing information from others. For example the embeddings of #emph[green apple] will hold much richer meaning after an attention block as the word #emph[apple] will have *attended* to #emph[green]. Thereafter, the embedding of apple is updated. It now sits in a slightly shifted position in embedding space, carrying this advanced, updated information with it. 
+
+Mathematically speaking, the attention block is a scaled dot-product. For all n embeddings in the input sequence, we create two novel vectors called Query ($Q_n$) and Key ($K_n$). These are produced via convolution of the embeddings with weight matrices that are calibrated during model training:
+
+$ Q_i = W_Q dot arrow(E)_i $
+$ K_i = W_K dot arrow(E)_i $
+
+A third matrix $V$ represents the actual embedding values of the sequence. 
+
+$ "Attention"(K, Q, V) = "softmax"((Q K^T)/(sqrt(d_"embed"))) dot V $
+
+@attention
+
+//multi-head attention
+
 
 #citep(<attention-positions>)
 
@@ -75,7 +122,7 @@ A fundamental breakthrough was made in modern technology with the transformer ar
 
 === Vision Transformers
 
-
+Motivation came out of CNN deficiencies -> lack of ability to extract distant feature relationships
 
 //patch embedding, for image classifiction
 #citep(<transformer-image>)
