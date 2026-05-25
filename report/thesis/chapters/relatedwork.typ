@@ -20,34 +20,6 @@ Taking ignition probability out of the picture, there are a few crucial factors 
 
 Other factors influencing burn extent include natural difference vegetation indices (NDVI). This monitors vegetation health through infrared radiation from satellite stations. Vapor pressure, humidity are contributing factors. A factor that can lead to containment or further acceleration of such events is topography, as terrain is more susceptible to propagating fire in high-slope conditions. Similarly, wind has the analogous ability to shift flame angle to set neighboring combustible material afire. Lastly, determing biomass density and fuel moisture are avid determinants of risk @rafaqat. Wind is an especially dangerous factor as at high velocities it can also lead to transport of burning materials, sparking new fires elsewhere, a factor that was especially harmful in the January 2025 fires in Los Angeles @fire-speed.
 
-== Multimodal Learning Tasks in Remote Sensing
-
-// Modeling of risk via climate markers
-wildfire stats modeling @wildfire-stats-modeling
-
-
-
-BNN for el nino climate prediction @el-nino
-
-@durlevic
-/*
-== Deep Learning in Remote Sensing
-=== CNN based approaches
-=== Spatio-temporal learning
-=== Multi-modal Earth Observation Learning
-*/
-
-Cuboid attention for space-time transformers used for forecasting time series of earth systems @earthformer
-
-=== Wildfire Applications
-
-@jain-ml-overview
-
-@andrianarivony
-
-// Fire spread stuff here
-@spread-forecasting
-
 
 == The Transformer <sec:transformers>
 === Background & Motivation 
@@ -126,7 +98,7 @@ The resulting attention values are then used to update the embeddings to hold ri
 $ arrow(E)'_i = arrow(E)_i + A_i $
 
 //multi-head attention
-Attention rarely is caried out in such single operations but in many blocks. The raw embeddings are fed to each of these blocks that might contain many of these operations, individually called heads. Each block and each head is thus able to learn slightly different relatiional attributes between the embeddings. This is called multi-headed attention #citep(<attention-positions>).
+Attention rarely is caried out in such single operations but in many blocks. The raw embeddings are fed to each of these blocks that might contain many of these operations, individually called heads. Each block and each head is thus able to learn slightly different relational attributes between the embeddings. This is called multi-headed attention #citep(<attention-positions>).
 
 Crucially, the computations of each head and block are independent of each other, making this process highly parallelizable and computationally convenient to compute with large Graphics Processing Units (GPU).
 
@@ -134,19 +106,49 @@ Crucially, the computations of each head and block are independent of each other
 === Johnson-Lindenstrauß Lemma & Vector representations
 #citep(<johnson-lindenstrauss>)
 
-=== Positional Encodings
-#citep(<wang2021on>)
-
 
 === Vision Transformers
+The concept of using embedded sequences as predictors quickly caught on for vision tasks. The bottleneck resided in establishing an analogy to what a token should represent in images. Using the naive approach in extracting a token for each pixel value in every image quickly scales above computable limits as using $N$ tokens for an image of height $h$ and width $w$ scales quadratically with image resolution ($N = h times w$). Furthermore, attention processes also scale as $O(n_"tokens"^2)$ as per @eq:attention, this would quickly lead to unfeasible computations @vision-trans-stats. The solution was found in extracting not raw pixel values, but patches of them. By flattening each patch into a vector and projecting this into an embedding dimension an analogous structure to embedding was found @transformer-image. It is hereby important that the embedded values are not the exact pixel values but are the product of a convolution operation. This mechanism outperformed convolutional approaches on predicting labeled such as ImageNet, CIFAR-100 or BTAB. 
 
-Motivation came out of CNN deficiencies -> lack of ability to extract distant feature relationships
+// CNN do not capture distant relationships
+The transformer notably solved one of the main converns of convolutional neural network approaches, which involves using a kernel as a sliding window to extract features. This process however, while being an asset at extacting local features, failed to correlate features that might have a large extent or distant relationships in an image @cnn-transformer-comparison. Because transformers have the ability to self-weigh relationships of features, this issue is almost entirely resolved. An investigation on the the large dataset Imagenet-21k could show that vision transformer models consistently outperform convolution approaches, amongst others due to its enhanced feature recognition @imagenet21k.
 
-//patch embedding, for image classifiction
-#citep(<transformer-image>)
+A new challenge with the transformer architecture is that in general, compared to its predecessors, such a model requires an extensive set of pre-labeled data in order not just to learn dependencies of its input, but to generalize well to unseen data @cnn-transformer-comparison2. 
 
-#citep(<video-vision-transformer>)
 
+Transformers performed well with simple classification tasks, but could initially not perform well in denser tasks, image segmentation being a prime example. This is in part due to the excess of attention calculation a model runs through for one prediction. An adaptation to this was found in the sliding-window (SWIN) which particularly for large-scale images bridged the gap of computational time from text tasks to the image interpretation @swintransformer. By only computing self-attention between non-overlapping local windows rather than the entire set, the approach brough greater efficiency.
+
+An invaluable advancement to vision transformer came with frequent applications to remote sensing data. As satellite data is grid-like it is an ideal application. This coincided with a further enhancement to the pipeline: positional encodings. Here, the set of embedded image patches are pre-weighed, proportionally to their distance to other patches. This serves as a kickstarter to the later cross-patch attention process in which close patches will conduct attention more closely due to their initial similarity induced by the positional encoding @transformer-remote-sensing. Early appraoches adapted rotary positional encoding from natural language processing into vision approaches @rotarypositionembedding. Further progress was made with the proposal of using overlayed sinusoidal encodings, that do not just pass absolute encoding but relative ones. 
+
+This concept could  be further extended the temporal dimension. Input images with multiple steps accross time could not only share weights given their relative position, but also would explicitly encode time via the same logic. Images of neighboring timesteps could receive more similar encodings while distant once could not conduct attention as closely @time-encoding @video-vision-transformer     .            
+
+== Multimodal Learning Tasks in Remote Sensing
+
+// Modeling of risk via climate markers
+wildfire stats modeling @wildfire-stats-modeling
+
+
+
+BNN for el nino climate prediction @el-nino
+
+@durlevic
+/*
+== Deep Learning in Remote Sensing
+=== CNN based approaches
+=== Spatio-temporal learning
+=== Multi-modal Earth Observation Learning
+*/
+
+Cuboid attention for space-time transformers used for forecasting time series of earth systems @earthformer
+
+=== Wildfire Applications
+
+@jain-ml-overview
+
+@andrianarivony
+
+// Fire spread stuff here
+@spread-forecasting
 
 
 
