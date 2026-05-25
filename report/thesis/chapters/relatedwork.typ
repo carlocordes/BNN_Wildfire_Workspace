@@ -83,7 +83,6 @@ To an untrained model this might appear like a random projection of a word into 
   caption : "Oragnization of tokens into vector space and relative positional meanings"
 ) <fig:embedding_relative>
 
-#todo(stroke : orange)[figure of relational terms and reference]
 
 The imporant notion to realize is that a trained transformer is able to relate certain terms to one another. Subtracting the vector of #emph[aunt] and #emph[uncle] will yield a similar vector to the one when applying this logic to #emph[brother] and #emph[sister], a vector that to the transformer encodes a logic of relative gender. Furthermore, taking the dot product of two vectors will provide information about similarity of these two vectors. Analogously to vector geometry, the dot product of two unit vectors pointing in different directions will yield zero: 
 $ accent(e, hat)_i dot accent(e, hat)_j = delta_(i j) = {1 "if" i = j, "else" 0 $
@@ -91,27 +90,46 @@ Suppose such vectors were describing directions in a coordinate system. A zero d
 
 
 
-=== Attention mechanism
+=== Attention
 // Key, Query, Value
-Embedding the tokens of an input sequence like in @fig:tokenization, for now only gives a vectoral meaning to each individual one, rather than as a complete input sequence. However, as the core concept here is to make predictions from an input sequence as a whole, a mechanism relating the meaning of each token into a conglomerate understanding is neccessary. This exact problem is solved by the concept attention, a powerful matrix encoder that not only serves as the basis of this project, but is responsible for the immense growth in the artificial intelligence sector @3b1b-attention. 
+Embedding the tokens of an input sequence like in @fig:tokenization, for now only gives a vectoral meaning to each individual one, rather than as a complete input sequence. However, as the core concept here is to make predictions from an input sequence as a whole, a mechanism relating the meaning of each token into a conglomerate understanding is neccessary. This exact problem is solved by the concept of attention, a powerful matrix encoder that not only serves as the basis of this project, but is responsible for the immense growth in the artificial intelligence sector @3b1b-attention. 
 
-Despite being powerful, this concept is very simple. It determines the relative importance of all embeddings to all other embeddings in the input and subsequently updates each embedding, depending on this relative importance. This step can be conceptualized as tokens absorbing information from others. For example the embeddings of #emph[green apple] will hold much richer meaning after an attention block as the word #emph[apple] will have *attended* to #emph[green]. Thereafter, the embedding of apple is updated. It now sits in a slightly shifted position in embedding space, carrying this advanced, updated information with it. 
+Despite being powerful, this concept is very simple. It determines the relative importance of all embeddings to all other embeddings in the input and subsequently updates each embedding, depending on this relative importance. This step can be conceptualized as tokens absorbing information from others. For example, the embeddings of #emph[green apple] will hold much richer meaning after an attention block as the token #emph[apple] will have *attended* to #emph[green]. Thereafter, the embedding of apple is updated. It now sits in a slightly shifted position in embedding space, carrying this richer, updated information. 
 
-Mathematically speaking, the attention block is a scaled dot-product. For all n embeddings in the input sequence, we create two novel vectors called Query ($Q_n$) and Key ($K_n$). These are produced via convolution of the embeddings with weight matrices that are calibrated during model training:
+Mathematically speaking, the attention block is a scaled matrix multiplication. To apply attention to the input sequence, first let the concatination operation of all tokens of a sequence into a structure that will be called the Value matix $V$:
 
+$
+  "[The] [capital] [of] [Italy] [is]" -> 
+  mat(
+    dots.v, dots.v, dots.v, dots.v, dots.v;
+    arrow(E_1), arrow(E_2), arrow(E_3), arrow(E_4), arrow(E_5);
+    dots.v, dots.v, dots.v, dots.v, dots.v;
+
+  ) = V 
+ $
+
+
+For every embedding $E_i$ a query vector ($Q_i$) and a key vector ($K_i$) is created via convolution of weighted key and query matrices that are convolved with the embedings of each token:
 $ Q_i = W_Q dot arrow(E)_i $
 $ K_i = W_K dot arrow(E)_i $
 
-A third matrix $V$ represents the actual embedding values of the sequence. 
+Attention is then formulated as scaled the matrix multiplication of these two matrices, using softmax to scale the outputs to the domain $[0, 1]$ and scaled by the value matrix $arrow(V)$ @attention:
 
-$ "Attention"(K, Q, V) = "softmax"((Q K^T)/(sqrt(d_"embed"))) dot V $
+$ "Attention"(K, Q, V) = "softmax"((Q dot K^T)/(sqrt(d_"embed"))) dot V $ <eq:attention>
 
-@attention
+This formula acts as a bridge allowing each embedding to inform itself about the contents and relevance of all other embeddings. Every embedding posesses a query $Q$ to which the to other tokens respond with a key value $K$. The dot product between these two in @eq:attention thus defines the relevance of tokens to one another. The greater the output of this dot product, the higher the attention value will be for a token pair. The result of the scaled dot product is multiplied by the value matrix. In simple terms it can be read: one token uses its query vector to get information about another with its key vector. If that information is relevant to it and the dot product is high, a weighted part of the queried token is added onto the embedding of the querying token. 
+
+This process is called-self attention, as the input sequence is only compared to itself. The analogous process of comparing two sequence, for example in translation tasks. The magnitude to which embeddings attend to one another is entirely governed by the weights in $W_k$ and $W_Q$, which are initialized at random and learned during model training. 
+
+The resulting attention values are then used to update the embeddings to hold richer meaning:
+
+$ arrow(E)'_i = arrow(E)_i + A_i $
 
 //multi-head attention
+Attention rarely is caried out in such single operations but in many blocks. The raw embeddings are fed to each of these blocks that might contain many of these operations, individually called heads. Each block and each head is thus able to learn slightly different relatiional attributes between the embeddings. This is called multi-headed attention #citep(<attention-positions>).
 
+Crucially, the computations of each head and block are independent of each other, making this process highly parallelizable and computationally convenient to compute with large Graphics Processing Units (GPU).
 
-#citep(<attention-positions>)
 
 === Johnson-Lindenstrauß Lemma & Vector representations
 #citep(<johnson-lindenstrauss>)
