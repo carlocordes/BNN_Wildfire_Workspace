@@ -36,10 +36,12 @@ Upload data (will upload entire results directory, name accordingly):
 docker run -v "$(pwd)"/files:/app/files wildfire-model python scripts.s3_data_upload --path files/experiments --s3_prefix results
 ````
 
-# t007 
+# t009 and t010
 
 ```
-docker run  --device nvidia.com/gpu=all --ipc=host -v "$(pwd)"/files:/app/files:Z wildfire-model python main.py --config config_t008_1.yaml --exp_name t008_1 --auto_upload; docker run  --device nvidia.com/gpu=all --ipc=host -v "$(pwd)"/files:/app/files:Z wildfire-model python main.py --config config_t008_2.yaml --exp_name t008_2 --auto_upload; docker run  --device nvidia.com/gpu=all --ipc=host -v "$(pwd)"/files:/app/files:Z wildfire-model python main.py --config config_t008_3.yaml --exp_name t008_3 --auto_upload; docker run  --device nvidia.com/gpu=all --ipc=host -v "$(pwd)"/files:/app/files:Z wildfire-model python main.py --config config_t008_4.yaml --exp_name t008_4 --auto_upload;
+docker run  --device nvidia.com/gpu=all --ipc=host -v "$(pwd)"/files:/app/files:Z wildfire-model python main.py --config config_t009_2.yaml --exp_name t009_2 --auto_upload; docker run  --device nvidia.com/gpu=all --ipc=host -v "$(pwd)"/files:/app/files:Z wildfire-model python main.py --config config_t009_3.yaml --exp_name t009_3 --auto_upload; docker run  --device nvidia.com/gpu=all --ipc=host -v "$(pwd)"/files:/app/files:Z wildfire-model python main.py --config config_t009_4.yaml --exp_name t009_4 --auto_upload; docker run  --device nvidia.com/gpu=all --ipc=host -v "$(pwd)"/files:/app/files:Z wildfire-model python main.py --config config_t010_1.yaml --exp_name t010_1 --auto_upload; docker run  --device nvidia.com/gpu=all --ipc=host -v "$(pwd)"/files:/app/files:Z wildfire-model python main.py --config config_t010_2.yaml --exp_name t010_2 --auto_upload; docker run  --device nvidia.com/gpu=all --ipc=host -v "$(pwd)"/files:/app/files:Z wildfire-model python main.py --config config_t010_3.yaml --exp_name t010_3 --auto_upload; docker run  --device nvidia.com/gpu=all --ipc=host -v "$(pwd)"/files:/app/files:Z wildfire-model python main.py --config config_t010_4.yaml --exp_name t010_4 --auto_upload;
+
+
 ```
 
 
