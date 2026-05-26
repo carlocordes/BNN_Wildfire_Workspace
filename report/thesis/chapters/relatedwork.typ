@@ -123,21 +123,9 @@ An invaluable advancement to vision transformer came with frequent applications 
 This concept could  be further extended the temporal dimension. Input images with multiple steps accross time could not only share weights given their relative position, but also would explicitly encode time via the same logic. Images of neighboring timesteps could receive more similar encodings while distant once could not conduct attention as closely @time-encoding @video-vision-transformer     .            
 
 == Multimodal Learning Tasks in Remote Sensing
-
-// Modeling of risk via climate markers
-wildfire stats modeling @wildfire-stats-modeling
+Spatio-temporal attention mechanism find a wide array of applications in the remote sensing sector as with sufficiently large datasets, they tend to outperform other architectures @rs-transformers. Specifically for climate phenomena prediction, learning architectures performed well, even before the initiation of vision transformers. Notably, a bayesian neural network architecture was able to produce numerical predictions of el Niño, taking a multi-modal, multi-year dataset to produce valuable prdiction results. The method elegantly predicts sea-surface temperatures under varying lead-time and at different time scales @el-nino. A 
 
 
-
-BNN for el nino climate prediction @el-nino
-
-@durlevic
-/*
-== Deep Learning in Remote Sensing
-=== CNN based approaches
-=== Spatio-temporal learning
-=== Multi-modal Earth Observation Learning
-*/
 
 Cuboid attention for space-time transformers used for forecasting time series of earth systems @earthformer
 
@@ -147,6 +135,8 @@ Cuboid attention for space-time transformers used for forecasting time series of
 
 @andrianarivony
 
+@durlevic
+
 // Fire spread stuff here
 @spread-forecasting
 
@@ -155,3 +145,4 @@ Cuboid attention for space-time transformers used for forecasting time series of
 == Memory Acceleration
 
 == Research Gap
+// Motivate with fig of difference vectors: create climate health vector space
