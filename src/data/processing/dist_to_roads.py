@@ -7,7 +7,7 @@ import numpy as np
 from pathlib import Path
 import geopandas as gpd
 import rasterio
-from rasterio.transform import from_origin
+from rasterio.transform import Affine
 from rasterio.features import rasterize
 from shapely.geometry import box
 from scipy.ndimage import distance_transform_edt
@@ -15,7 +15,7 @@ from scipy.ndimage import distance_transform_edt
 def produce_roads_distance_image(in_path : Path, out_dir : Path, golden_grid : GoldenGrid, max_distance = 13_000):
 
     ## Get dimensions from DTM
-    with rasterio.open(Path('data', 'raw', 'elevation', 'dtm.tif')) as src:
+    with rasterio.open(Path('files', 'data', 'raw', 'elevation', 'dtm.tif')) as src:
         raster_height = src.height
         raster_width = src.width
         transform = src.transform
@@ -77,7 +77,7 @@ def produce_roads_distance_image(in_path : Path, out_dir : Path, golden_grid : G
     """
 
     # Load binary water map
-    path_to_water_binary = Path('data', 'resources', 'binary_water_projected.tif')
+    path_to_water_binary = Path('files', 'data', 'resources', 'binary_water_projected.tif')
     with rasterio.open(path_to_water_binary) as src:
         binary_water = src.read(1)
 
@@ -93,6 +93,16 @@ def produce_roads_distance_image(in_path : Path, out_dir : Path, golden_grid : G
     # Force ocean to -1
     proximity_masked = np.where(binary_water == 0, proximity, -1.0)
 
+    # --- FIX: Synchronize Array Flip and Metadata Flip ---
+    # 1. Flip the raw pixel array rows vertically
+    proximity_flipped = np.flipud(proximity_masked)
+
+    # 2. Invert the Y-axis transform parameters to reflect the physical array flip
+    corrected_transform = Affine(
+        transform.a, transform.b, transform.c,
+        transform.d, -transform.e, transform.f + (raster_height * transform.e)
+    )
+
     # Save output
     out_dir.mkdir(parents=True, exist_ok=True)
     out_path = out_dir / "proximity.tif"
@@ -107,10 +117,11 @@ def produce_roads_distance_image(in_path : Path, out_dir : Path, golden_grid : G
         nodata=-1.0,
         dtype=np.float32,
         crs=golden_grid.crs,
-        transform=transform,
+        transform=corrected_transform, # Apply the updated transform
         compress="lzw"
     ) as dst:
-        dst.write(proximity_masked.astype(np.float32), 1)
+        # Write out the vertically flipped array
+        dst.write(proximity_flipped.astype(np.float32), 1)
 
     print(f"Saved: {out_path}")
 
@@ -134,6 +145,6 @@ if __name__ == '__main__':
         day_interval = 8
     )
 
-    produce_roads_distance_image(in_path = Path('data', 'raw', 'roads'),
-                                 out_dir=Path('data', 'processed', 'roads'),
+    produce_roads_distance_image(in_path = Path('files', 'data', 'raw', 'roads'),
+                                 out_dir=Path('files', 'data', 'test', 'roads'),
                                  golden_grid=portugal_ggrid)
