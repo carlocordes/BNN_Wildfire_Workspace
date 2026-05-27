@@ -86,8 +86,6 @@ $ P in RR ^ (16 times 16) -> P_(f l a t) in RR ^256 $
 
 Up to this point, pixel values have not changed, simply the indexing is altered. To produce the embedding, the convolution operation then maps every flattened patch into the embedding dimension. Here we showcase the operation for a patch size of 16 pixels, mapping to the embedding of dimension 128:
 
-#todo(stroke: orange)[Figure of conv  with stride equal to patch]
-
 
 $ e = w P_(f l a t) +  b $ <eq:2dkernel>
 
@@ -176,23 +174,16 @@ The final transformer-ready embeddings for static and dynamic tokens are additio
 
 Simply adding large vectors to our representations of patches might seem counterintuitive at first, however it is crucial to remember that the representations of data modularities are learnable. The longer the transformer architecture trains, them more it knows to contextualize a patch of precipitation data differently, depending on the time of year. The most elegant analogy to this process is music. If the raw encoding of a patch is analogous to a melody, the positional and temporal encoding represent the harmony accompanying it. Music is propagated as the sums of interfering frequencies, however they are discretely distinguishable to the human ear. The same is true for the transformer, it learns to contextualize the raw encoding (melody) given an extra set of information, the embeddings (harmony).
 
-=== Attention Layers
+=== Token Unification
+The heart of the concept in this model relies on early fusion. Rather than separating tokens per module, this approach allows for patches accross time and modularity to freely communicate with all others. Despite having the drawback of computational load here, this is a crucial design choice with the purpose of not overconstraining the system. The token unification step therefore concatenates embeddings into a joint sequence, as a preparation for the next step. Crucially, the order of tokens is of no importance here as the attention steps that follow are invariant to permutation of tokens. Furthermore, due to the spatial and temporal embeddings and embedding tags, tokens are uniquely identifiable. 
+The tensor at this stage holds embeddings accross all timesteps, patches and modules in one place:
+$ macron(T) in  RR ^ (B times [h dot w(n_"dyn" dot t plus n_"static")] times d_"embed") = RR ^(B times n_"token" times d_"embed") $
 
-#todo(stroke :green)[Update]
-Having obtained a set of tokens from the batch of the dataset, the next step dictates how these tokens communicate information between each other and consequently update their embeddings. The core priniples for this step are:
 
-- Module isolation
-- Shallow self-attention
+=== Joint Attention
+The tokens in the concatinated tensor at this stage query each others information for the first time. This step can be considered self-attention by mathematical standards, as all embeddings reside in the same tensor, however this really allows embeddings to query one another accross modules. This joint encoder is composed of $8$ identical blocks, consisting of $8$ attention heads each, equating to a total of 64 attention heads. Each of these have the ability to learn individual feature relationships.
 
-The idea of keeping the modules in isolation at first is to give the later cross-attention process a richer input. By allowing e.g. a patch embedding stemming from the DTM to understand not only itself but its surrounding patches, we save computational cost for later steps as this module delivers an already pre-trained version of every patch. Model weights in this step are only shared between and trained by embeddings of the same module. The idea of keeping this initial self-attention shallow is motivated by the goal of the model. The objective is not for every set of module tokens to best understand its surroundings, but much rather get an initial idea of it, to carry it further into the next model step.
-
-#todo(stroke: green)[Specify number of heads, number of blocks]
-#todo(stroke: orange)[Diagram of attention heads]
-
-=== Fusion Layers
-With a set of pre-attended tokens we now move onto the fusion step, which represents the first time tokens from different modules are exposed to each other. The traditional implementation with this goal in mind is to use cross-attention heads in which the query vector belongs to the first, and both key and value vector belonging to the other. This step then fuses patch information across modules. 
-
-The methodology chosen here for cross-attending such data is implicit. Rather than taking every token on its own and letting it communicate to all other tokens of all datasets we simplify the process, as the computational complexity of such a module would scale exponentially with the number of patches and the number of datasets as input. The objective here is to rule out potentially unnecessary attention computations e.g. two patches describing vegetation stress and wind that lie far apart in the area of interest. To motivate the following simplification, a short revisit to the core idea of the original objective of cross-attention for translation learning tasks. A sentence, in which every word forms a token, will likely be rearranged in the translation to another language (see @fig:translation). In the English language we expect the embedding of #emph[red] to have a large influence that of #emph[fire] and likewise in its French counterpart. When cross-attending these tokens of the two datasets, we expect no consistency in the arrangements in the positions of directly translatable words. Therefore, a cross-attention mechanism considering all tokens is mandatory.
+To motivate the design choice of the join attention block here, a short revisit to the core idea of the original objective of cross-attention for translation learning tasks. A sentence, in which every word forms a token, will likely be rearranged in the translation to another language (see @fig:translation). In the English language we expect the embedding of #emph[red] to have a large influence that of #emph[fire] and likewise in its French counterpart. When cross-attending these tokens of the two datasets, we expect no consistency in the arrangements in the positions of directly translatable words. Therefore, a cross-attention mechanism considering all tokens accross space and time is mandatory.
 
 #figure(
   rect[#strong[EN:] The red fire spreads across the land \
@@ -200,18 +191,28 @@ The methodology chosen here for cross-attending such data is implicit. Rather th
   caption: "Example of token order of two cross-attending datasets"
 ) <fig:translation>
 
-This concept is however not consistent in the vision transformer. When dealing with datasets that embody the same area of interest and in the same order, we can confidently expect token 1 to describe the same entity in both images. This very effect allows for an elegant simplification of cross-attention with which we can greatly constrain cross-attending tokens and computational cost. 
+The same concept is true for a spatio-temporal transformer. Rather than separating modularities and conduction isolated self-attention, we consider all possibilities. An example here could be the effect of precipitation on future burn probabilities. When predicting for wildfires, the further the latest rain surge was recorded, the higher the probability for an event will be. This underlines that allowing tokens to attend accross time and modules is crucial at this point.
 
-The fusion layer concatenates tokens for every patch and stacks their values into one new embedding vector. The model thus holds all information later used for prediction in only one set of patch tokens. With this set it then performs self-attention or since multiple modalities are used a quasi-cross-attention block. Since every token in one module cross-attends to every other token in another module very similarly, this step simply carries out this operation together as we expect these token pairs to weight on each other quite similarly. This part of the encoder carries the weight of deep self-attention with n blocks of x attention heads each. The product of these attended tokens then represent the final embeddings of each patch in the vector space that characterizes the prediction of ground truth. Tokens with similar physical properties are represented by similar locations in this embedding space.
-#todo(stroke : red)[Fill head & block values]
-#todo(stroke: red)[Ammend fusion part, explain convolution]
+An indispensible mechansim that is implemented at this position during training is dropout. When learning, models tend to follow their most probable direction of learning, meaning once it locked onto characterizing a specific learnt feature, this is all it will be able to understand. Dropout, systematically works against this, as the goal is not to understand just single relationships between data, but as many as possible. Therefore, at random intervals and attention heads, dropout will temporarily zero-out all attention weights. This signifies to the encoder that for this specific iteration of epoch it will not have access to relating pieces of data in the exact way it is used to. Consequently, it will have to rely on making new connections. 
+
+
+=== Disaggregation
+Having attended the modular tokens, the goal is to reshape the obtained information into a prediction map. Important to consider however is that despite having obtained a set of learned tokens, they still stem from different modalities. In order to make use of dynamic and static data in the best way, the tensor contained all attended global embeddings, is disaggregated back into dynamic and static tensors. The patches from dynamic modules are first averaged accross the temporal dimension:
+
+$ RR  ^ (B times M times t times d_"embed") -> RR ^ (B times M times d_"embed") $
+
+It might seem that information is lost via this operation. However, when considering the previous attention block, which has the purpose to weight patches accross timesteps by their importance, this stop only aggregates this information into one time step. During training, patches from the more relevant timesteps will receive higher weights, thus the averaged representation of the time series will represent this. 
+
+Tokens of static and dynamic layers are consequently concatinated into tensor T_decoder, setting up for the decoder:
+
+$ T in RR ^(B times n_"token" times d_"embed") $
 
 === Decoder Layer
-The final task of the vision transformer is to take the embedded vector representations in the embedding space and project them back into a form which represents our ground truth: a 2D image. To clarify, the tensor at this point carries an embedding for each patch, which needs to be projected back from embedding space into 2D:
+The final task of the vision transformer is to take the embedded vector representations in the embedding space and project them back into a form which represents our ground truth: a 2D image. 
 
-$ T_"encoder" in RR ^(B times n_"token" times d_"embed") $
 
-It is of course possible to make predictions for every patch. This is however not just an oversimplification but does provide the opportunity to predict for as many samples as possible. @fig:decoder shows the complete structure of the decoder process that projects back to image space:
+
+It is of course possible to make predictions for every patch. This is however not just an oversimplification but also does not provide the opportunity to predict for as many samples as possible. @fig:decoder shows the complete structure of the decoder process that projects back to image space:
 
 #figure(
   table(
@@ -232,7 +233,11 @@ It is of course possible to make predictions for every patch. This is however no
   caption : "Stepwise decoder mechanism & prediction head"
 ) <fig:decoder>
 
+
+In this stage we use a progressive resolution decoding. After first reshaping the tensor into four dimensions, equal to the dimension of the output we require, a series of convolution and upsample steps are used. Each convolution halves the dimension of the embedding, after which the upsample redistributes this via bilinear interpolation to widen the sizes of the patches back into a full-size image. Finally, the decoder features the #emph[un-pad] operation which discards the padding created intially to prevent data disturbance. 
+
 === Model Parameters
+By design, the total amount of parameters in the model is dependent on the temporal extent of the sample, as every patch and every timestep receives an individual encoding. The model uses 90% of its parameters on encoding while the remainder is equally distributed on embedding and decoding. @fig:param_count shows the total parameters for a baseline model with a sequence extent of 5 days.
 
 #figure(
   table(
@@ -261,8 +266,7 @@ It is of course possible to make predictions for every patch. This is however no
   ),
   caption : "Model Parameters per class
    "
-)
-#todo(stroke : green)[Update with final params]
+) <fig:param_count>
 
 == Training Routine
 The setup of the training regimen of models is crucial as without certain guidelines, the model could make faulty predictions. The most important vocabulary in this regard is #emph[overfitting] and #emph[generalization]. Generalization describes the ability of the model to transfer its learned patterns from training data to previously unseen data. This showcases the ability to concretely learn the physical underlying the data, rather than simply memorizing it. A model is said to be overfitting, if the prediction results rely on the training data including all its inaccuracies and noise rather than actual representation of data. The training routine used herein caters to both of these issues. As a guide, @algo:training shows the pseudo-code implementation of the training regiment. 
@@ -336,8 +340,10 @@ Another parameter $accent(v, hat)_i$ tracks the erraticism a parameter shows dur
 
 
 == Experiments
+The aim of this study is mainly to create such a spatio-temporal transformer model that serves as a predictor for wildfire events. More specifically, focus will be given to investigating the temporal dependencies of both the input sample and output targe. Investigation into how these drive accuracy will be given. Furthermore, it is crucial to understand feature importance. Therefore, the ladder part will focus on extracting feature importance.
 
-#todo(stroke : green)[Enhance descriptions]
-1. Varying sample length - how does temporal depth influence climatological contextualization
-2. Lead time horizon stress test: how does prediction vary under extensive lead time (future prediction)?
-3. Ablation studies - zeroing out weights in embedings, tracking prediction performance and consequently feature importance
+To guide the reader through these experiments the following research questions motivate the study of each:
+
+1. *Varying sample/target length:* How does temporal depth influence climatological contextualization and prediction accuracy?
+2. *Lead time horizon stress test:* How does prediction vary under extensive lead time (future prediction)?
+3. *Ablation studies:* - How does prediction accuracy under constrataints of input datasets?
