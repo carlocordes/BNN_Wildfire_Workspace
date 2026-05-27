@@ -52,7 +52,7 @@ To an untrained model this might appear like a random projection of a word into 
 
 #figure(
   image("../figs/2d_vectors_and_relative.png"),
-  caption : "Oragnization of tokens into vector space and relative positional meanings"
+  caption : "Organization of tokens into vector space and relative positional meanings"
 ) <fig:embedding_relative>
 
 
@@ -104,6 +104,7 @@ Crucially, the computations of each head and block are independent of each other
 
 
 === Johnson-Lindenstrauß Lemma & Vector representations
+#todo(stroke :green)[Work in progress]
 #citep(<johnson-lindenstrauss>)
 
 
@@ -129,18 +130,27 @@ Spatio-temporal attention mechanism find a wide array of applications in the rem
 
 With natural catastrophe modeling being heavily reliant on data, machine learning architectures arrived in this sector as well. Notably, a study with the interest of Serbia studied three different deep learning approaches (XGBoost, Kolmogorov-Arnold networks and neural netowrks) to compare their prediction abilities. By combining a multi-modal dataset to predict historical burn-map, the deep neural network (DNN) could show the best prediction accuracy with $83.4%$ @durlevic
 
-As large amounts of resources in the sector are being devoted to wildfire mitigation, large academic interest is focused on predicting wildfire spread. Specifically for transformers this area seems to be promising. Focusing on fire spread in the North American regian, a study could deliver excellent results using a Swin-based transformer mechanism to deliver next-day fire spread estimates @america-spread-transformer. Similarly CNN have successfully been combined with encoder-decoder transformer mechanisms to do similar work. By specifically encoding forest fire status into the predicting dataset, better predictive accuracy was achieved. By relying on environmental markers, sociological indicators and fuel conditions, methods like FiRE-HNL use physics-infused approaches to train models. This discipline could be extended to serve multi-day predictions derived from MODIS & ERA5 data, once again outperforming CNN-approaches with F1 scores of 0.75 @spread-forecasting@andrianarivony. 
+As large amounts of resources in the sector are being devoted to wildfire mitigation, large academic interest is focused on predicting wildfire spread @jain-ml-overview. Specifically for transformers this area seems to be promising. Focusing on fire spread in the North American regian, a study could deliver excellent results using a Swin-based transformer mechanism to deliver next-day fire spread estimates @america-spread-transformer. Similarly CNN have successfully been combined with encoder-decoder transformer mechanisms to do similar work. By specifically encoding forest fire status into the predicting dataset, better predictive accuracy was achieved. By relying on environmental markers, sociological indicators and fuel conditions, methods like FiRE-HNL use physics-infused approaches to train models. This discipline could be extended to serve multi-day predictions derived from MODIS & ERA5 data, once again outperforming CNN-approaches with F1 scores of 0.75 @spread-forecasting@andrianarivony. 
 
 A different sub-discipline focuses on risk metrics with respect to wildfire detection, a factor specifically important for non-urban areas. Another discipline this serves is examining ignition probabilities. By being able to detect wildfires soon after ignition, the root cause of the fire can be reliably identified and used to better understand initial ignition conditions @fire-detection. 
 
-
-@jain-ml-overview
-
-
-
+Initial approaches which model ignition and spread probability as a joint risk factor in combination with transformer models look promising. First benchmarks have shown that combining large multi-year datasets of multi-modal satellite imagery can yield promising predicting performance on multiple time scales @wildfire-bc.
 
 
 == Memory Acceleration
+#todo(stroke :green)[Work in progress]
 
 == Research Gap
-// Motivate with fig of difference vectors: create climate health vector space
+// Spatio-temporal transformer 
+Without a doubt, attention-based transformer is promising for a predictive task. Especially the diverse learnable embedding vector space serves as an asset due to its seemingly infinite application scopes and ability to learn specific tasks. More closely, the storage of natural phenomena as image-based datasets makes the transformer model an ideal application. With the abilty of transformer models to learn embedding vector spaces in the natural language processing (NLP) domain (as in @fig:embedding_relative), it begs the question whether these architectures are also able to create analogous representations of climate health, a so-called wildfire-risk embedding space.
+
+First applications to wildfire problems show promising results, however only limited work has been done outside of predicting spread. With some research slowly pivoting towards modeling pure wilfire occurence risk, first bench-marks have proven the theoretical framework possible with valid results. 
+
+// Predictive performance, time-scales, lead-time
+Furthermore, little to no information is available regarding discussions of temporal scopes of input and prediction scopes. Short-term multi-day predictions of fire spread are an established discipline however elongating the temporal prediction scope along with modeling pure risk of occurrence have yet to be investigated.
+
+Therefore, the main gap this research addresses, regards temporal flexibility of a predictive mechanism. This includes 3 dependencies: the scope of input data a model uses to form its predictions, the temporal scope of prediction and the dependency on model accuracy to make predictions for the distant future (lead-time). Furthermore, an investigation into feature importance via ablation studies is crucial to understanding predictive performance and will represent a second focus of this work.
+
+
+
+
