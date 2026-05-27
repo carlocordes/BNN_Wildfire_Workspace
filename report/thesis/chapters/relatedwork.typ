@@ -123,22 +123,20 @@ An invaluable advancement to vision transformer came with frequent applications 
 This concept could  be further extended the temporal dimension. Input images with multiple steps accross time could not only share weights given their relative position, but also would explicitly encode time via the same logic. Images of neighboring timesteps could receive more similar encodings while distant once could not conduct attention as closely @time-encoding @video-vision-transformer     .            
 
 == Multimodal Learning Tasks in Remote Sensing
-Spatio-temporal attention mechanism find a wide array of applications in the remote sensing sector as with sufficiently large datasets, they tend to outperform other architectures @rs-transformers. Specifically for climate phenomena prediction, learning architectures performed well, even before the initiation of vision transformers. Notably, a bayesian neural network architecture was able to produce numerical predictions of el Niño, taking a multi-modal, multi-year dataset to produce valuable prdiction results. The method elegantly predicts sea-surface temperatures under varying lead-time and at different time scales @el-nino. A 
-
-
-
-Cuboid attention for space-time transformers used for forecasting time series of earth systems @earthformer
+Spatio-temporal attention mechanism find a wide array of applications in the remote sensing sector as with sufficiently large datasets, they tend to outperform other architectures @rs-transformers. Specifically for climate phenomena prediction, learning architectures performed well, even before the initiation of vision transformers. Notably, a bayesian neural network architecture was able to produce numerical predictions of el Niño, taking a multi-modal, multi-year dataset to produce valuable prdiction results. The method elegantly predicts sea-surface temperatures under varying lead-time and at different time scales @el-nino. The same study was conducted with #emph[Earthformer], a new transformer architecture that specializes in predicting spatio-temporal datasets @earthformer. By dividing datasets not just into patches, but into cuboids via two directional and one temporal dimension, the model uses so-called cuboid-attention to forecast El Nino/Southern Oscillation, outperforming earlier LSTM and convLSTM methods. 
 
 === Wildfire Applications
 
+With natural catastrophe modeling being heavily reliant on data, machine learning architectures arrived in this sector as well. Notably, a study with the interest of Serbia studied three different deep learning approaches (XGBoost, Kolmogorov-Arnold networks and neural netowrks) to compare their prediction abilities. By combining a multi-modal dataset to predict historical burn-map, the deep neural network (DNN) could show the best prediction accuracy with $83.4%$ @durlevic
+
+As large amounts of resources in the sector are being devoted to wildfire mitigation, large academic interest is focused on predicting wildfire spread. Specifically for transformers this area seems to be promising. Focusing on fire spread in the North American regian, a study could deliver excellent results using a Swin-based transformer mechanism to deliver next-day fire spread estimates @america-spread-transformer. Similarly CNN have successfully been combined with encoder-decoder transformer mechanisms to do similar work. By specifically encoding forest fire status into the predicting dataset, better predictive accuracy was achieved. By relying on environmental markers, sociological indicators and fuel conditions, methods like FiRE-HNL use physics-infused approaches to train models. This discipline could be extended to serve multi-day predictions derived from MODIS & ERA5 data, once again outperforming CNN-approaches with F1 scores of 0.75 @spread-forecasting@andrianarivony. 
+
+A different sub-discipline focuses on risk metrics with respect to wildfire detection, a factor specifically important for non-urban areas. Another discipline this serves is examining ignition probabilities. By being able to detect wildfires soon after ignition, the root cause of the fire can be reliably identified and used to better understand initial ignition conditions @fire-detection. 
+
+
 @jain-ml-overview
 
-@andrianarivony
 
-@durlevic
-
-// Fire spread stuff here
-@spread-forecasting
 
 
 
