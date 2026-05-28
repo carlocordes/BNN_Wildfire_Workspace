@@ -25,3 +25,6 @@ mnt/
 exports/dataset_viewer/all_samples.png
 exports/julian_day_enc/julian_day.png
 exports/transformer_plots/2d_vectors_and_relative.png
+exports/model_evaluation/model_train_compare.png
+exports/model_evaluation/model_train_seq.png
+exports/model_evaluation/benchmarks.parquet
