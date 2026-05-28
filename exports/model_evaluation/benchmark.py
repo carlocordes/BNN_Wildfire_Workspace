@@ -29,18 +29,18 @@ out_path = Path('exports', 'model_evaluation', 'benchmarks.parquet')
 # Name configurations
 run_names = {
     'SampleExt3' : 't009_1',
-    'SampleExt5' : 't009_2',
-    'SampleExt7' : 't009_3',
-    'SampleExt1' : 't009_4',
+    #'SampleExt5' : 't009_2',
+    #'SampleExt7' : 't009_3',
+    #'SampleExt1' : 't009_4',
 
-    'Lead-5' : 't010_1',
-    'Lead0' : 't009_2', #Grabbed from old run
-    'Lead5' : 't010_2',
-    'Lead10' : 't010_3',
-    'Lead20' : 't010_4',
+    #'Lead-5' : 't010_1',
+    #'Lead0' : 't009_2', #Grabbed from old run
+    #'Lead5' : 't010_2',
+    #'Lead10' : 't010_3',
+    #'Lead20' : 't010_4',
 }
 
-THR_CLASS = 0.5
+THR_CLASS = 0.1
 # -------------------------------------- #
 
 # Helper functions
@@ -134,6 +134,7 @@ def evaluate(model, loss_fn, cfg_training, cfg_path, device):
             ## Convert outputs to Binary
             targets_int = targets.int()
             probs = torch.sigmoid(preds)
+            print('Max value in prediction:', probs.max().item())
             binary_preds = (probs > THR_CLASS).int()
 
             # Calculate raw pixel counts for this 300x600 grid sample
@@ -141,18 +142,21 @@ def evaluate(model, loss_fn, cfg_training, cfg_path, device):
             fp = torch.sum((binary_preds == 1) & (targets_int == 0)).item()
             fn = torch.sum((binary_preds == 0) & (targets_int == 1)).item()
 
-            # If the ground truth has fires (tp+fn > 0) OR the model predicted a fire (tp+fp > 0)
-            if (tp + fp + fn) > 0:
-                batch_precision = tp / (tp + fp) if (tp + fp) > 0 else 0.0
-                batch_recall = tp / (tp + fn) if (tp + fn) > 0 else 0.0
-                
-                # Accumulate to global counts only when a fire event actually occurred
-                total_tp += tp
-                total_fp += fp
-                total_fn += fn
+            # --- Precision Lane ---
+            if (tp + fp) > 0:
+                batch_precision = tp / (tp + fp)
             else:
-                # No fires seen or predicted. Explicitly skip tracking precision/recall for this sample
-                batch_precision = float('nan')
+                # The model predicted zero fires. 
+                # If there actually WERE fires (fn > 0), precision is 0.0 (it completely missed).
+                # If there were NO fires (fn == 0), it was a perfect clear-sky prediction. We set to NaN to ignore it.
+                batch_precision = 0.0 if fn > 0 else float('nan')
+
+            # --- Recall Lane ---
+            if (tp + fn) > 0:
+                batch_recall = tp / (tp + fn)
+            else:
+                # There were zero actual fires on the ground.
+                # Recall is mathematically undefined here, so we ignore this day's recall.
                 batch_recall = float('nan')
 
             # Append values to histories
@@ -279,5 +283,7 @@ if __name__ == '__main__':
     # Drop path columns as parquet cannot write these
     df_runs = df_runs.drop(columns = ['cfg_path', 'model_path', 'log_path'])
 
+    print(df_runs)
+
     # Store to parquet
-    df_runs.to_parquet(path = out_path, index = False)
+    #df_runs.to_parquet(path = out_path, index = False)
