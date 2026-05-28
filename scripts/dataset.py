@@ -19,13 +19,17 @@ def skip_missing_collate_fn(batch):
 
 
 class SpatialTemporalDataset(Dataset):
-    def __init__(self, config_path: Path, split_type: str = "train"):
+    def __init__(self, config_path: Path, split_type: str = "train", benchmark_mode = False):
         """
         Initializes dataset tracking by explicit Out-of-Time calendar blocks.
         """
         self.cfg = OmegaConf.load(config_path)
         self.cfg_data = self.cfg['data_paths']['processed']
         cfg_temporal = self.cfg['data']['temporal_extent']
+
+        if benchmark_mode:
+            print('[BENCHMARK MODE] Updating sequence period to fit period window')
+            cfg_temporal['sequence_period'] = 14
         
         # Channel source paths
         self.sample_base_paths = [
