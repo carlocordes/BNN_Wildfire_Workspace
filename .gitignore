@@ -28,3 +28,5 @@ exports/transformer_plots/2d_vectors_and_relative.png
 exports/model_evaluation/model_train_compare.png
 exports/model_evaluation/model_train_seq.png
 exports/model_evaluation/benchmarks.parquet
+exports/model_evaluation/lead_lift.png
+exports/model_evaluation/seq_lift.png

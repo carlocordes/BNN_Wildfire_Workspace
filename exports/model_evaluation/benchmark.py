@@ -9,20 +9,16 @@ from scripts.dataset import SpatialTemporalDataset, skip_missing_collate_fn
 
 # External
 import re
+import math
 import numpy as np
 from pathlib import Path
 from typing import Dict, Any
 import pandas as pd
 from datetime import datetime
-import scipy.optimize as opt
-import matplotlib.pyplot as plt
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 from torch.utils.data import DataLoader
-from torchmetrics.classification import BinaryCalibrationError
-from sklearn.calibration import calibration_curve
 
 
 # --------------- CONFIG --------------- #
@@ -44,6 +40,8 @@ run_names = {
     'Lead10' : 't010_3',
     'Lead20' : 't010_4',
 }
+
+calibration_logit = math.log(600)
 # -------------------------------------- #
 
 # Helper functions
@@ -70,13 +68,7 @@ def parse_training_log(log_path: Path) -> Dict[str, Any]:
 
 
 
-def evaluate(model, loss_fn, cfg_training, cfg_path, device):
-    dates_list, loss_list, recall_list, precision_list = [], [], [], []
-    high_tier_coverage, med_tier_coverage, low_tier_coverage = [], [], []
-    all_flat_probs, all_flat_targets = [], []
-
-    total_tp, total_fp, total_fn = 0, 0, 0
-
+def evaluate(model, cfg_path, device):
     dataset = SpatialTemporalDataset(cfg_path, split_type="test", benchmark_mode=True)
     set_dataloader = DataLoader(
         dataset, batch_size=1, shuffle=False, num_workers=1,
@@ -84,6 +76,9 @@ def evaluate(model, loss_fn, cfg_training, cfg_path, device):
     )
 
     model.eval()
+
+    # Empty arrays
+    all_targets, all_probs = [], []
 
     with torch.no_grad():
         for batch_idx, batch in enumerate(set_dataloader):
@@ -98,97 +93,36 @@ def evaluate(model, loss_fn, cfg_training, cfg_path, device):
             first_date = datetime.strptime(batch['meta_first_date'][0], '%Y-%m-%d')
 
             ## Predict (Raw Logits)
-            preds = model(x_static=static_x, x_dynamic=dynamic_x, x_single_dynamic=single_dynamic_x)
+            logits = model(x_static=static_x, x_dynamic=dynamic_x, x_single_dynamic=single_dynamic_x)
 
-            ## Convert outputs via Temperature Correction
-            targets_int = targets.int()
-            probs = torch.sigmoid(preds)
-            binary_preds = (probs > THR_CLASS).int()
+            # Calibrate
+            cal_logits = logits - calibration_logit
 
-            tp = torch.sum((binary_preds == 1) & (targets_int == 1)).item()
-            fp = torch.sum((binary_preds == 1) & (targets_int == 0)).item()
-            fn = torch.sum((binary_preds == 0) & (targets_int == 1)).item()
+            probs = torch.sigmoid(cal_logits)
 
-            # --- Categorical Risk Tier Formulation ---
-            total_actual_fires = torch.sum(targets_int).item()
-            
-            if total_actual_fires > 0:
-                high_risk_mask = (probs >= 0.40).int()
-                med_risk_mask  = ((probs >= 0.15) & (probs < 0.40)).int()
-                low_risk_mask  = (probs < 0.15).int()
+            np_target = targets.squeeze(0).detach().cpu().numpy()
+            np_prob = probs.squeeze(0).detach().cpu().numpy()
 
-                h_cov = torch.sum((high_risk_mask == 1) & (targets_int == 1)).item() / total_actual_fires
-                m_cov = torch.sum((med_risk_mask == 1) & (targets_int == 1)).item() / total_actual_fires
-                l_cov = torch.sum((low_risk_mask == 1) & (targets_int == 1)).item() / total_actual_fires
-            else:
-                h_cov, m_cov, l_cov = float('nan'), float('nan'), float('nan')
+            all_targets.append(np_target)
+            all_probs.append(np_prob)
 
-            high_tier_coverage.append(h_cov)
-            med_tier_coverage.append(m_cov)
-            low_tier_coverage.append(l_cov)
+    # Produce yearly aggregated risk values
+    probs_stack = np.stack(all_probs)
+    targets_stack = np.stack(all_targets)
+    yearly_exp_risk = np.sum(probs_stack, axis = 0).flatten()
+    yearly_burn= np.max(targets_stack, axis=0).flatten()
 
-            # --- Precision & Recall ---
-            if (tp + fp) > 0:
-                batch_precision = tp / (tp + fp)
-            else:
-                batch_precision = 0.0 if fn > 0 else float('nan')
-
-            if (tp + fn) > 0:
-                batch_recall = tp / (tp + fn)
-            else:
-                batch_recall = float('nan')
-
-            if (tp + fp + fn) > 0:
-                total_tp += tp; total_fp += fp; total_fn += fn
-
-            precision_list.append(batch_precision)
-            recall_list.append(batch_recall)
-            loss_list.append(loss_fn(preds, targets).item())
-            dates_list.append(first_date)
-
-            all_flat_probs.append(probs.cpu().flatten())
-            all_flat_targets.append(targets_int.cpu().flatten())
-
-        global_precision = total_tp / (total_tp + total_fp) if (total_tp + total_fp) > 0 else 0.0
-        global_recall = total_tp / (total_tp + total_fn) if (total_tp + total_fn) > 0 else 0.0
-
-        probs_tensor = torch.cat(all_flat_probs)
-        targets_tensor = torch.cat(all_flat_targets)
-
-        # --- Global Expected Calibration Error (ECE) Math ---
-        ece_metric = BinaryCalibrationError(n_bins=10, norm='l1')
-        global_ece = ece_metric(probs_tensor, targets_tensor).item()
-
-        # Calibration curve
-        prob_true, prob_pred = calibration_curve(
-            y_true = targets_tensor.numpy(),
-            y_prob = probs_tensor.numpy(),
-            n_bins = 10,
-        )
 
     return {
-        'batch_history' : {
-            'dates' : dates_list,
-            'losses' : loss_list,
-            'precision' : precision_list,
-            'recall' : recall_list,
-            'high_risk_coverage': high_tier_coverage,
-            'med_risk_coverage': med_tier_coverage,
-            'low_risk_coverage': low_tier_coverage,
-        },
-        'global_averages' : {
-            'precision' : global_precision,
-            'recall' : global_recall,
-            'ece': global_ece,
-        },
-        'calibration' : {
-            'prob_true' : prob_true,
-            'prob_pred' : prob_pred,
+        'aggregated' : {
+            'yearly_burn' : yearly_burn,
+            'yearly_risk' : yearly_exp_risk
         }
     }
+    
 
 
-def load_model(cfg_model, cfg_data, model_path, device):
+def load_model(cfg_model : nn.Module, cfg_data, model_path, device):
     model = STViT(
         num_dynamic_channels=cfg_model['num_dynamic_channels'],
         num_static_channels=cfg_model['num_static_channels'] + cfg_model['num_single_dynamic_channels'],
@@ -210,90 +144,59 @@ if __name__ == '__main__':
         } for name, exp in run_names.items()
     ])
 
+
+
+    # Initialize empty arrays to later store into df_runs
     train_histories, val_histories, test_losses, best_val_losses = [], [], [], []
-    test_run_dates, test_run_losses, test_run_precision_history, test_run_recall_history = [], [], [], []
-    test_run_precision, test_run_recall, test_run_ece = [], [], []
-    test_run_low_risk, test_run_med_risk, test_run_high_risk = [], [], []
-    prob_pred, prob_true = [], []
+    yearly_burn, yearly_risk = [], []
 
     for idx, row in df_runs.iterrows():
         print(f"\n Evaluating model run: {row['name']}")
         
         ## 1. Parse logfile
+        # Parse
         log_data = parse_training_log(row['log_path'])
+
+        # Extract
         train_histories.append(log_data['train_losses'])
         val_histories.append(log_data['val_losses'])
         test_losses.append(log_data['test_loss'])
         best_val_losses.append(min(log_data['val_losses']) if log_data['val_losses'] else None)
 
-        ## 2. Setup Configs and Models
+
+        ## 2. Evaluate on validation set
+        # Setup Configs and Models
         cfg = load_config(row['cfg_path'])
         device = 'mps'
         loss_fn = nn.BCEWithLogitsLoss(pos_weight=torch.Tensor([cfg['training']["pos_weight"]])).to(device)
         model = load_model(cfg_model=cfg['model'], cfg_data=cfg['data'], model_path=row['model_path'], device=device)
 
+        # Evaluate
+        metrics = evaluate(model=model, cfg_path=row['cfg_path'], device=device)
 
-        ## PASS 2: Evaluate with the newly found T scaling factor
-        metrics = evaluate(model=model, loss_fn=loss_fn, cfg_training=cfg['training'], 
-                           cfg_path=row['cfg_path'], device=device)
-        
-        metrics_history = metrics['batch_history']
-        metrics_global = metrics['global_averages']
-        metrics_cal = metrics['calibration']
+        # Store
+        metrics_hist = metrics['aggregated']
+        yearly_burn.append(metrics_hist['yearly_burn'])
+        yearly_risk.append(metrics_hist['yearly_risk'])
 
-        test_run_dates.append(metrics_history['dates'])
-        test_run_losses.append(metrics_history['losses'])
-        test_run_recall_history.append(metrics_history['recall'])
-        test_run_precision_history.append(metrics_history['precision'])
-        test_run_recall.append(metrics_global['recall'])
-        test_run_precision.append(metrics_global['precision'])
-        test_run_low_risk.append(metrics_history['low_risk_coverage'])
-        test_run_med_risk.append(metrics_history['med_risk_coverage'])
-        test_run_high_risk.append(metrics_history['high_risk_coverage'])
-        test_run_ece.append(metrics_global['ece'])
-
-        prob_pred.append(metrics_cal['prob_pred'])
-        prob_true.append(metrics_cal['prob_true'])
+        ## 3. OPT
 
 
-    # Assign Columns
-    df_runs['train_loss_history'] = train_histories
-    df_runs['val_loss_history'] = val_histories
-    df_runs['final_test_loss'] = test_losses
+    ## Append to df for all models
+    # Log contents
+    df_runs['train_history'] = train_histories
+    df_runs['val_history'] = val_histories
+    df_runs['test_loss'] = test_losses
     df_runs['best_val_loss'] = best_val_losses
-    df_runs['dates'] = test_run_dates
-    df_runs['loss_history'] = test_run_losses
-    df_runs['precision_history'] = test_run_precision_history
-    df_runs['recall_history'] = test_run_recall_history
-    df_runs['precision'] = test_run_precision
-    df_runs['recall'] = test_run_recall
-    df_runs['ece'] = test_run_ece
-    df_runs['low_risk_cov'] = test_run_low_risk
-    df_runs['med_risk_cov'] = test_run_med_risk
-    df_runs['high_risk_cov'] = test_run_high_risk 
-    df_runs['prob_pred'] = prob_pred
-    df_runs['prob_true'] = prob_true   
+
+    # History contents
+    df_runs['yearly_exp_risk'] = yearly_risk
+    df_runs['yearly_agg_burn'] = yearly_burn
 
 
-    df_runs = df_runs.drop(columns=['cfg_path', 'model_path', 'log_path'])
-    print("\n Final Benchmarking Evaluation Summary:")
-    print(df_runs[['name', 'optimal_temperature', 'ece', 'precision', 'recall']])
-    print(df_runs[['name', 'low_risk_cov', 'med_risk_cov', 'high_risk_cov']])
-    print(df_runs[['prob_pred', 'prob_true']])
+    # Drop columns
+    df_runs = df_runs.drop(columns = ['cfg_path', 'model_path', 'log_path'])
 
-    print('prob_pred', prob_pred)
-    print('prob_true', prob_true)
-
-
-    # df_runs.to_parquet(path=out_path, index=False)
-
-    plt.figure(figsize=(6, 6))
-    plt.plot([0, 1], [0, 1], "k--", label="Perfect Calibration (Ideal)")
-    plt.plot(prob_pred, prob_true, "s-", color="crimson")
-
-    plt.xlabel("Confidence (Mean Predicted Probability)")
-    plt.ylabel("Accuracy (Actual Burn Fraction)")
-    plt.title("Wildfire Risk Reliability Diagram")
-    plt.legend(loc="lower right")
-    plt.grid(True)
-    plt.show()
+    # Write to parquet
+    df_runs.to_parquet(path = out_path)
+    print(f'Saved to {out_path}')
