@@ -1,25 +1,20 @@
 """
-Evaluate performance metrics of multiple models accross disciplines with Temperature Scaling calibration
+Evaluate performance metrics of multiple models across disciplines with Temperature Scaling calibration
 """
-
-# Internal
-
 
 # External
 import numpy as np
 from pathlib import Path
 import pandas as pd
-import scipy.optimize as opt
 import matplotlib.pyplot as plt
 import seaborn as sns
 
 out_path = Path('exports', 'model_evaluation', 'seq_lift.png')
 
-def plot_aggregate_captured_fire_ratio(df_runs: pd.DataFrame, out_path : Path):
+def plot_aggregate_captured_fire_ratio(df_runs: pd.DataFrame, out_path: Path):
     """
     Plots the Spatially Aggregated Captured-Fire Ratio using Seaborn.
-    Collapses the temporal dimension first by calculating the accumulated expected
-    risk map vs. the cumulative annual burn map.
+    Calculates and appends Gini Coefficients directly to the model metrics and plot legend.
     """
     # Set standard Seaborn styling context
     sns.set_theme(style="whitegrid")
@@ -27,14 +22,17 @@ def plot_aggregate_captured_fire_ratio(df_runs: pd.DataFrame, out_path : Path):
     # We will accumulate tidy data for Seaborn lineplot
     plot_data_list = []
     
+    # Dictionary to map model names to their updated names with Gini info for the legend
+    legend_labels_map = {}
+    
     for idx, row in df_runs.iterrows():
         model_name = row['name']
 
-        # --- THE FIX: Force extraction into flat 1D NumPy arrays ---
+        # Force extraction into flat 1D NumPy arrays
         spatial_expected_risk = np.asarray(row['yearly_exp_risk']).squeeze().flatten()
         spatial_actual_burns = np.asarray(row['yearly_agg_burn']).squeeze().flatten()
 
-        # Debugging step: Let's make sure we actually have flat pixel arrays
+        # Debugging step: Make sure we actually have flat pixel arrays
         if spatial_expected_risk.ndim != 1 or len(spatial_expected_risk) == 0:
             print(f"Warning: Unexpected data shape for {model_name}. "
                   f"Risk shape: {spatial_expected_risk.shape}, Burn shape: {spatial_actual_burns.shape}")
@@ -52,27 +50,38 @@ def plot_aggregate_captured_fire_ratio(df_runs: pd.DataFrame, out_path : Path):
             print(f"Warning: No actual fires found in the aggregated map for {model_name} (Total: {total_fires}). Skipping.")
             continue
             
-        # 5. Scale to percentages
-        y_captured_fraction = (cum_fires / total_fires) * 100
-        x_area_fraction = np.linspace(0, 100, len(cum_fires))
+        # 5. Scale to fractions and percentages
+        y_captured_fraction = cum_fires / total_fires
+        x_area_fraction = np.linspace(0, 1, len(cum_fires))
         
-        # Downsample data points for cleaner plotting memory footprint (e.g., every 1000th pixel or 500 points total)
-        # Highly recommended if your satellite images have millions of pixels
+        # --- GINI COEFFICIENT CALCULATION ---
+        # Gini is defined as: (Area under the model curve - Area under random baseline) / (Area under perfect model - Area under random baseline)
+        # Area under random baseline = 0.5
+        # Max theoretical area under a perfect model with severe class imbalance approaches 1.0
+        area_under_model = np.trapezoid(y_captured_fraction, x_area_fraction)
+        gini_coefficient = (area_under_model - 0.5) / 0.5
+        
+        # Create an updated label string to house our Gini metric inside the visual legend wrapper
+        legend_model_label = f"{model_name} (Gini: {gini_coefficient:.3f})"
+        legend_labels_map[model_name] = legend_model_label
+
+        # Downsample data points for cleaner plotting memory footprint
         downsample_factor = max(1, len(x_area_fraction) // 1000)
         
         # Build temp dataframe for this model execution
         model_df = pd.DataFrame({
-            'Area Monitored (%)': x_area_fraction[::downsample_factor],
-            'Fires Captured (%)': y_captured_fraction[::downsample_factor],
-            'Model': model_name
+            'Area Monitored (%)': x_area_fraction[::downsample_factor] * 100,
+            'Fires Captured (%)': y_captured_fraction[::downsample_factor] * 100,
+            'Model': legend_model_label  # Assigning the labeled string directly for Seaborn grouping
         })
         plot_data_list.append(model_df)
         
-        # Print operational spatial metrics to the console
+        # Print operational spatial metrics alongside Gini to the console
         print(f"\n--- Spatially Aggregated Metrics [{model_name}] ---")
+        print(f"Calculated Gini Coefficient: {gini_coefficient:.4f}")
         for pct in [1, 5, 10, 30]: 
             idx_pct = int((pct / 100) * (len(x_area_fraction) - 1))
-            print(f"Top {pct}% highest-risk land area accounts for {y_captured_fraction[idx_pct]:.2f}% of the year's total burned pixels.")
+            print(f"Top {pct}% highest-risk land area accounts for {y_captured_fraction[idx_pct]*100:.2f}% of the year's total burned pixels.")
 
     if not plot_data_list:
         print("Error: No valid model metrics could be calculated. Plotting aborted.")
@@ -81,19 +90,19 @@ def plot_aggregate_captured_fire_ratio(df_runs: pd.DataFrame, out_path : Path):
     # Combine all individual model runs into one tidy dataframe
     tidy_plot_df = pd.concat(plot_data_list, ignore_index=True)
 
-    # Initialize the matplotlib figure figure container
+    # Initialize the matplotlib figure container
     fig, ax = plt.subplots(figsize=(10, 7))
     
     # 6. Plot using Seaborn lineplot
-    # Pass 'name' categorical order directly to hue_order so it maintains your structure
-    hue_order = df_runs['name'].cat.categories if isinstance(df_runs['name'].dtype, pd.CategoricalDtype) else None
+    # Reconstruct the categorical sorting order using our new modified strings
+    hue_order = [legend_labels_map[cat] for cat in df_runs['name'].cat.categories if cat in legend_labels_map]
     
     sns.lineplot(
         data=tidy_plot_df,
         x='Area Monitored (%)',
         y='Fires Captured (%)',
         hue='Model',
-        hue_order=hue_order,
+        hue_order=hue_order if hue_order else None,
         linewidth=2.5,
         ax=ax
     )
@@ -114,7 +123,9 @@ def plot_aggregate_captured_fire_ratio(df_runs: pd.DataFrame, out_path : Path):
     ax.legend(handles=handles, labels=labels, loc='lower right', fontsize=11, frameon=True)
     
     plt.tight_layout()
-    plt.savefig(out_path, dpi = 300)
+    plt.savefig(out_path, dpi=300)
+    print(f"\nSaved Gini-integrated lift plot to: {out_path}")
+
 
 if __name__ == '__main__':
 
@@ -122,19 +133,18 @@ if __name__ == '__main__':
     path_to_pq = Path('exports', 'model_evaluation', 'benchmarks.parquet')
     df = pd.read_parquet(path=path_to_pq)
 
-
     # Select relevant cols
-    df = df[['name', 'yearly_exp_risk', 'yearly_agg_burn']]
-
-
+    df = df[['name', 'yearly_exp_risk', 'yearly_agg_burn']].copy()
 
     seq_models = ['SampleExt1', 'SampleExt3', 'SampleExt5', 'SampleExt7']
-    seq_data = df[df['name'].isin(seq_models)]
-    seq_data['name'] = pd.Categorical(seq_data['name'], categories = seq_models, ordered = True)
-
+    seq_data = df[df['name'].isin(seq_models)].copy()
+    seq_data['name'] = pd.Categorical(seq_data['name'], categories=seq_models, ordered=True)
+    seq_data = seq_data.sort_values('name')
 
     lead_models = ['Lead-5', 'Lead0', 'Lead5', 'Lead10', 'Lead20']
-    lead_data = df[df['name'].isin(lead_models)]
-    lead_data['name'] = pd.Categorical(lead_data['name'], categories = lead_models, ordered = True)
+    lead_data = df[df['name'].isin(lead_models)].copy()
+    lead_data['name'] = pd.Categorical(lead_data['name'], categories=lead_models, ordered=True)
+    lead_data = lead_data.sort_values('name')
 
-    plot_aggregate_captured_fire_ratio(seq_data, out_path)
+    # Execute plotting sequence
+    plot_aggregate_captured_fire_ratio(lead_data, out_path)
