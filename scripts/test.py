@@ -12,12 +12,15 @@ from src.models.vit.vit import STViT
 # External
 import argparse
 from pathlib import Path
+import math
 import torch
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 from scripts.dataset import SpatialTemporalDataset, skip_missing_collate_fn
 from torch.utils.data import DataLoader, Dataset
 
+
+logit_correction = math.log(600)
 
 def main(model_path: Path, config_path: Path):
     # Load config parameters
@@ -71,7 +74,8 @@ def main(model_path: Path, config_path: Path):
             first_date = batch['meta_first_date']
 
             logits = model(static_x, dynamic_x, single_dynamic)
-            prediction = torch.sigmoid(logits).squeeze().cpu().numpy()
+            corrected_logits = logits - logit_correction
+            prediction = torch.sigmoid(corrected_logits).squeeze().cpu().numpy()
             target = targets.squeeze().cpu().numpy()
             
             batches.append((prediction, target, batch_idx, first_date))

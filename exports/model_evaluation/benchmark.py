@@ -1,23 +1,28 @@
 """
-Evaluate performance metrics of multiple models accross disciplines
+Evaluate performance metrics of multiple models accross disciplines with Temperature Scaling calibration
 """
 
 # Internal
 from src.core.utils import load_config
 from src.models.vit.vit import STViT
 from scripts.dataset import SpatialTemporalDataset, skip_missing_collate_fn
-from scripts.train import build_model
 
 # External
 import re
+import numpy as np
 from pathlib import Path
 from typing import Dict, Any
 import pandas as pd
 from datetime import datetime
+import scipy.optimize as opt
+import matplotlib.pyplot as plt
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from torch.utils.data import DataLoader
+from torchmetrics.classification import BinaryCalibrationError
+from sklearn.calibration import calibration_curve
 
 
 # --------------- CONFIG --------------- #
@@ -29,150 +34,137 @@ out_path = Path('exports', 'model_evaluation', 'benchmarks.parquet')
 # Name configurations
 run_names = {
     'SampleExt3' : 't009_1',
-    #'SampleExt5' : 't009_2',
-    #'SampleExt7' : 't009_3',
-    #'SampleExt1' : 't009_4',
+    'SampleExt5' : 't009_2',
+    'SampleExt7' : 't009_3',
+    'SampleExt1' : 't009_4',
 
-    #'Lead-5' : 't010_1',
-    #'Lead0' : 't009_2', #Grabbed from old run
-    #'Lead5' : 't010_2',
-    #'Lead10' : 't010_3',
-    #'Lead20' : 't010_4',
+    'Lead-5' : 't010_1',
+    'Lead0' : 't009_2', 
+    'Lead5' : 't010_2',
+    'Lead10' : 't010_3',
+    'Lead20' : 't010_4',
 }
-
-THR_CLASS = 0.1
 # -------------------------------------- #
 
 # Helper functions
 def parse_training_log(log_path: Path) -> Dict[str, Any]:
-    """
-    Parses a training log file to extract Train/Val losses per epoch 
-    and the final Test loss.
-    """
-    # Regex patterns matching your log format
+    """Parses training log file to extract histories."""
     epoch_pattern = re.compile(
         r"Epoch \[\d+/100\] Train Loss: (?P<train_loss>[\d\.]+) \| Val Loss: (?P<val_loss>[\d\.]+)"
     )
     test_pattern = re.compile(r"Final Test Loss: (?P<test_loss>[\d\.]+)")
 
-    results = {
-        "train_losses": [],
-        "val_losses": [],
-        "test_loss": None
-    }
+    results = {"train_losses": [], "val_losses": [], "test_loss": None}
 
-    # Read and parse line by line
     with open(log_path, 'r') as f:
         for line in f:
-            # Check for epoch losses
             epoch_match = epoch_pattern.search(line)
             if epoch_match:
                 results["train_losses"].append(float(epoch_match.group("train_loss")))
                 results["val_losses"].append(float(epoch_match.group("val_loss")))
                 continue
-                
-            # Check for final test loss
             test_match = test_pattern.search(line)
             if test_match:
                 results["test_loss"] = float(test_match.group("test_loss"))
-
     return results
 
 
+
 def evaluate(model, loss_fn, cfg_training, cfg_path, device):
+    dates_list, loss_list, recall_list, precision_list = [], [], [], []
+    high_tier_coverage, med_tier_coverage, low_tier_coverage = [], [], []
+    all_flat_probs, all_flat_targets = [], []
 
-    # Initialize data structures
-    dates_list = []
-    loss_list = []
-    recall_list = []
-    precision_list = []
+    total_tp, total_fp, total_fn = 0, 0, 0
 
-    total_tp = 0
-    total_fp = 0
-    total_fn = 0
-
-    total_samples = 0
-
-
-    # Create dataset and dataloader
-    dataset = SpatialTemporalDataset(cfg_path, split_type = "test")
-
+    dataset = SpatialTemporalDataset(cfg_path, split_type="test", benchmark_mode=True)
     set_dataloader = DataLoader(
-        dataset, 
-        batch_size=1, #cfg_training['batch_size'], 
-        shuffle=False,         
-        num_workers=1,         
-        pin_memory=False,       
-        collate_fn=skip_missing_collate_fn
+        dataset, batch_size=1, shuffle=False, num_workers=1,
+        pin_memory=False, collate_fn=skip_missing_collate_fn
     )
 
     model.eval()
 
-
     with torch.no_grad():
         for batch_idx, batch in enumerate(set_dataloader):
-
-            print(f'Processing batch_idx {batch_idx + 1} / {len(set_dataloader)}')
-
+            print(f'Processing test batch_idx {batch_idx + 1} / {len(set_dataloader)}')
             if batch is None:
                 continue
 
-            # Get data
             static_x = batch['static'].to(device)
             single_dynamic_x = batch['single_dynamic'].to(device)
             dynamic_x = batch['dynamic'].to(device)
             targets = batch['target'].to(device)
             first_date = datetime.strptime(batch['meta_first_date'][0], '%Y-%m-%d')
 
-            ## Predict
-            preds = model(
-                x_static=static_x,
-                x_dynamic=dynamic_x,
-                x_single_dynamic=single_dynamic_x
-            )
+            ## Predict (Raw Logits)
+            preds = model(x_static=static_x, x_dynamic=dynamic_x, x_single_dynamic=single_dynamic_x)
 
-            ## Convert outputs to Binary
+            ## Convert outputs via Temperature Correction
             targets_int = targets.int()
             probs = torch.sigmoid(preds)
-            print('Max value in prediction:', probs.max().item())
             binary_preds = (probs > THR_CLASS).int()
 
-            # Calculate raw pixel counts for this 300x600 grid sample
             tp = torch.sum((binary_preds == 1) & (targets_int == 1)).item()
             fp = torch.sum((binary_preds == 1) & (targets_int == 0)).item()
             fn = torch.sum((binary_preds == 0) & (targets_int == 1)).item()
 
-            # --- Precision Lane ---
+            # --- Categorical Risk Tier Formulation ---
+            total_actual_fires = torch.sum(targets_int).item()
+            
+            if total_actual_fires > 0:
+                high_risk_mask = (probs >= 0.40).int()
+                med_risk_mask  = ((probs >= 0.15) & (probs < 0.40)).int()
+                low_risk_mask  = (probs < 0.15).int()
+
+                h_cov = torch.sum((high_risk_mask == 1) & (targets_int == 1)).item() / total_actual_fires
+                m_cov = torch.sum((med_risk_mask == 1) & (targets_int == 1)).item() / total_actual_fires
+                l_cov = torch.sum((low_risk_mask == 1) & (targets_int == 1)).item() / total_actual_fires
+            else:
+                h_cov, m_cov, l_cov = float('nan'), float('nan'), float('nan')
+
+            high_tier_coverage.append(h_cov)
+            med_tier_coverage.append(m_cov)
+            low_tier_coverage.append(l_cov)
+
+            # --- Precision & Recall ---
             if (tp + fp) > 0:
                 batch_precision = tp / (tp + fp)
             else:
-                # The model predicted zero fires. 
-                # If there actually WERE fires (fn > 0), precision is 0.0 (it completely missed).
-                # If there were NO fires (fn == 0), it was a perfect clear-sky prediction. We set to NaN to ignore it.
                 batch_precision = 0.0 if fn > 0 else float('nan')
 
-            # --- Recall Lane ---
             if (tp + fn) > 0:
                 batch_recall = tp / (tp + fn)
             else:
-                # There were zero actual fires on the ground.
-                # Recall is mathematically undefined here, so we ignore this day's recall.
                 batch_recall = float('nan')
 
-            # Append values to histories
+            if (tp + fp + fn) > 0:
+                total_tp += tp; total_fp += fp; total_fn += fn
+
             precision_list.append(batch_precision)
             recall_list.append(batch_recall)
-
-            ## Loss (Still tracked globally to assess background convergence)
-            loss = loss_fn(preds, targets)
-            loss_list.append(loss.item())
-
-            ## Dates
+            loss_list.append(loss_fn(preds, targets).item())
             dates_list.append(first_date)
 
-        # Global averages computed strictly from days where fire pixels existed/were predicted
+            all_flat_probs.append(probs.cpu().flatten())
+            all_flat_targets.append(targets_int.cpu().flatten())
+
         global_precision = total_tp / (total_tp + total_fp) if (total_tp + total_fp) > 0 else 0.0
         global_recall = total_tp / (total_tp + total_fn) if (total_tp + total_fn) > 0 else 0.0
+
+        probs_tensor = torch.cat(all_flat_probs)
+        targets_tensor = torch.cat(all_flat_targets)
+
+        # --- Global Expected Calibration Error (ECE) Math ---
+        ece_metric = BinaryCalibrationError(n_bins=10, norm='l1')
+        global_ece = ece_metric(probs_tensor, targets_tensor).item()
+
+        # Calibration curve
+        prob_true, prob_pred = calibration_curve(
+            y_true = targets_tensor.numpy(),
+            y_prob = probs_tensor.numpy(),
+            n_bins = 10,
+        )
 
     return {
         'batch_history' : {
@@ -180,16 +172,35 @@ def evaluate(model, loss_fn, cfg_training, cfg_path, device):
             'losses' : loss_list,
             'precision' : precision_list,
             'recall' : recall_list,
+            'high_risk_coverage': high_tier_coverage,
+            'med_risk_coverage': med_tier_coverage,
+            'low_risk_coverage': low_tier_coverage,
         },
         'global_averages' : {
             'precision' : global_precision,
             'recall' : global_recall,
+            'ece': global_ece,
+        },
+        'calibration' : {
+            'prob_true' : prob_true,
+            'prob_pred' : prob_pred,
         }
     }
 
 
+def load_model(cfg_model, cfg_data, model_path, device):
+    model = STViT(
+        num_dynamic_channels=cfg_model['num_dynamic_channels'],
+        num_static_channels=cfg_model['num_static_channels'] + cfg_model['num_single_dynamic_channels'],
+        num_timestamps_per_sample=cfg_data['temporal_extent']['sample_extent'],
+        patch_size=cfg_model['patch_size'],
+        embedding_dim=cfg_model['embedding_dim']
+    )
+    model.load_state_dict(torch.load(model_path, map_location=device))
+    return model.to(device)
+
+
 if __name__ == '__main__':
-    # Initiate df structure
     df_runs = pd.DataFrame([
         { 
             'name' : name,
@@ -199,76 +210,53 @@ if __name__ == '__main__':
         } for name, exp in run_names.items()
     ])
 
-    # Lists to temporarily hold data to avoid Pandas iterable assignment bugs
-    train_histories = []
-    val_histories = []
-    test_losses = []
-    best_val_losses = []
-
-    test_run_dates = []
-    test_run_losses = []
-    test_run_precision_history = []
-    test_run_recall_history = []
-
-    test_run_precision = []
-    test_run_recall = []
+    train_histories, val_histories, test_losses, best_val_losses = [], [], [], []
+    test_run_dates, test_run_losses, test_run_precision_history, test_run_recall_history = [], [], [], []
+    test_run_precision, test_run_recall, test_run_ece = [], [], []
+    test_run_low_risk, test_run_med_risk, test_run_high_risk = [], [], []
+    prob_pred, prob_true = [], []
 
     for idx, row in df_runs.iterrows():
-
+        print(f"\n Evaluating model run: {row['name']}")
+        
         ## 1. Parse logfile
-        # Read logfile:
-        log_path = row['log_path']
-        log_data = parse_training_log(log_path)
-
-        # Append to temporary lists
+        log_data = parse_training_log(row['log_path'])
         train_histories.append(log_data['train_losses'])
         val_histories.append(log_data['val_losses'])
         test_losses.append(log_data['test_loss'])
-        
-        if log_data['val_losses']:
-            best_val_losses.append(min(log_data['val_losses']))
-        else:
-            best_val_losses.append(None)
+        best_val_losses.append(min(log_data['val_losses']) if log_data['val_losses'] else None)
 
-
-        ## 2. Evaluate model accuracy
-        # Get config from path
+        ## 2. Setup Configs and Models
         cfg = load_config(row['cfg_path'])
-        cfg_training = cfg['training']
-        cfg_model = cfg['model']
-        cfg_data = cfg['data']
-
-        # Other dependencies
         device = 'mps'
-        loss_fn = nn.BCEWithLogitsLoss(pos_weight=torch.Tensor([cfg_training["pos_weight"]])).to(device)
+        loss_fn = nn.BCEWithLogitsLoss(pos_weight=torch.Tensor([cfg['training']["pos_weight"]])).to(device)
+        model = load_model(cfg_model=cfg['model'], cfg_data=cfg['data'], model_path=row['model_path'], device=device)
 
 
-        # Initiate model
-        model = build_model(cfg_model = cfg_model, cfg_data = cfg_data, device = device)
-
-        # Evaluate and gather metrics
-        metrics = evaluate(model = model,
-                        loss_fn = loss_fn,
-                        cfg_training = cfg_training,
-                        cfg_path = row['cfg_path'],
-                        device = device)
+        ## PASS 2: Evaluate with the newly found T scaling factor
+        metrics = evaluate(model=model, loss_fn=loss_fn, cfg_training=cfg['training'], 
+                           cfg_path=row['cfg_path'], device=device)
         
-        # Extract and append
         metrics_history = metrics['batch_history']
         metrics_global = metrics['global_averages']
+        metrics_cal = metrics['calibration']
 
         test_run_dates.append(metrics_history['dates'])
         test_run_losses.append(metrics_history['losses'])
         test_run_recall_history.append(metrics_history['recall'])
         test_run_precision_history.append(metrics_history['precision'])
-
         test_run_recall.append(metrics_global['recall'])
         test_run_precision.append(metrics_global['precision'])
-        
+        test_run_low_risk.append(metrics_history['low_risk_coverage'])
+        test_run_med_risk.append(metrics_history['med_risk_coverage'])
+        test_run_high_risk.append(metrics_history['high_risk_coverage'])
+        test_run_ece.append(metrics_global['ece'])
+
+        prob_pred.append(metrics_cal['prob_pred'])
+        prob_true.append(metrics_cal['prob_true'])
 
 
-
-    # Safely assign entire columns at once
+    # Assign Columns
     df_runs['train_loss_history'] = train_histories
     df_runs['val_loss_history'] = val_histories
     df_runs['final_test_loss'] = test_losses
@@ -279,11 +267,33 @@ if __name__ == '__main__':
     df_runs['recall_history'] = test_run_recall_history
     df_runs['precision'] = test_run_precision
     df_runs['recall'] = test_run_recall
+    df_runs['ece'] = test_run_ece
+    df_runs['low_risk_cov'] = test_run_low_risk
+    df_runs['med_risk_cov'] = test_run_med_risk
+    df_runs['high_risk_cov'] = test_run_high_risk 
+    df_runs['prob_pred'] = prob_pred
+    df_runs['prob_true'] = prob_true   
 
-    # Drop path columns as parquet cannot write these
-    df_runs = df_runs.drop(columns = ['cfg_path', 'model_path', 'log_path'])
 
-    print(df_runs)
+    df_runs = df_runs.drop(columns=['cfg_path', 'model_path', 'log_path'])
+    print("\n Final Benchmarking Evaluation Summary:")
+    print(df_runs[['name', 'optimal_temperature', 'ece', 'precision', 'recall']])
+    print(df_runs[['name', 'low_risk_cov', 'med_risk_cov', 'high_risk_cov']])
+    print(df_runs[['prob_pred', 'prob_true']])
 
-    # Store to parquet
-    #df_runs.to_parquet(path = out_path, index = False)
+    print('prob_pred', prob_pred)
+    print('prob_true', prob_true)
+
+
+    # df_runs.to_parquet(path=out_path, index=False)
+
+    plt.figure(figsize=(6, 6))
+    plt.plot([0, 1], [0, 1], "k--", label="Perfect Calibration (Ideal)")
+    plt.plot(prob_pred, prob_true, "s-", color="crimson")
+
+    plt.xlabel("Confidence (Mean Predicted Probability)")
+    plt.ylabel("Accuracy (Actual Burn Fraction)")
+    plt.title("Wildfire Risk Reliability Diagram")
+    plt.legend(loc="lower right")
+    plt.grid(True)
+    plt.show()

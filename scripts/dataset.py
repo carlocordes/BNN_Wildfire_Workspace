@@ -28,7 +28,7 @@ class SpatialTemporalDataset(Dataset):
         cfg_temporal = self.cfg['data']['temporal_extent']
 
         if benchmark_mode:
-            print('[BENCHMARK MODE] Updating sequence period to fit period window')
+            print('[BENCHMARK MODE] Updating sequence period')
             cfg_temporal['sequence_period'] = 14
         
         # Channel source paths

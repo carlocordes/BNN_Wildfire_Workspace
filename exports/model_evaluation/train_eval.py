@@ -35,7 +35,7 @@ def plot_train_eval(data : pd.DataFrame):
             x=range(len(row['train_loss_history'])), 
             y=row['train_loss_history'], 
             label=row['name'], 
-            marker='o', 
+            marker='o',
             color=colors[idx], 
             linewidth=2, 
             ax=ax0
