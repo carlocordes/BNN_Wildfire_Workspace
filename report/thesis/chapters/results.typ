@@ -34,5 +34,17 @@
 
 
 // Experiment 3: Ablation studies
+== Ablation studies
+
+#figure(
+  image("../figs/seasonal_implicit_trend.png"),
+  caption : [Seasonal Ablation Profile: Component Reliance Across Time]
+)
+
+
+#figure(
+  image("../figs/ablation_mse_mae.png"),
+  caption : [Model Sensitivity Analysis by Data Module]
+)
 
 // Experiment 4: Vector space representation in 2D

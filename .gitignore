@@ -37,3 +37,5 @@ exports/model_evaluation/figs/seq_lift.png
 exports/model_evaluationfigs/seq_ece.png
 exports/model_evaluation/figs/lift_lead.png
 exports/model_evaluation/figs/lift_samp.png
+exports/ablation/ablation_mse_mae.png
+exports/ablation/seasonal_implicit_trend.png
