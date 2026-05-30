@@ -127,11 +127,25 @@ class STViT(nn.Module):
         pos_embed = torch.cat([torch.sin(out_y), torch.cos(out_y), torch.sin(out_x), torch.cos(out_x)], dim=-1)
         return pos_embed.flatten(0, 1).unsqueeze(0)
 
-    def forward(self, x_static, x_dynamic, x_single_dynamic):
+    def forward(self, x_static, x_dynamic, x_single_dynamic, ablate_static_idxs = None, ablate_dynamic_idxs = None):
         B = x_static.shape[0]
 
         # [ORIGINAL] Concat single-layer dynamic into the static block sequence
         x_static = torch.cat([x_static, x_single_dynamic], dim=1)
+
+        if ablate_static_idxs is not None:
+            print(f'[ABLATION]: Muting static channels', *ablate_static_idxs)
+
+            x_static = x_static.clone()
+            for idx in ablate_static_idxs:
+                x_static[:, idx, :, :] = 0.0
+
+        if ablate_dynamic_idxs is not None:
+            print(f'[ABLATION]: Muting dynamic channels', *ablate_dynamic_idxs)
+
+            x_dynamic = x_dynamic.clone()
+            for idx in ablate_dynamic_idxs:
+                x_dynamic[:, idx, :, :] = 0.0
 
         # [ORIGINAL] Reflection padding to ensure patch size divisibility
         orig_h, orig_w = x_static.shape[-2:]
