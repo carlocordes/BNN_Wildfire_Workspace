@@ -229,10 +229,11 @@ class STViT(nn.Module):
         # 5. Execute Progressive Resolution Upsampling Decoder Path
         pred_map = self.decoder(x_2d)
 
+        if return_tokens == True:
+            return pred_map, x_2d
+
         # [ORIGINAL] Slice off padding adjustments back to user raw target specifications
         pred_map = pred_map[:, 0:1, :orig_h, :orig_w]
         
-        if return_tokens == True:
-            return pred_map, x_2d
-        else:
-            return pred_map
+
+        return pred_map

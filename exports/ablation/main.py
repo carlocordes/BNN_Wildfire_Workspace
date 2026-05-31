@@ -149,8 +149,7 @@ def plot_implicit_seasonal_trend(all_predictions, out_path=Path('.')):
     plt.tight_layout()
     
     fig_name = 'seasonal_implicit_trend.png'
-    out_file = Path(out_path) / fig_name
-    out_file.parent.mkdir(parents=True, exist_ok=True) # Ensure the directory exists
+    out_file = out_path / fig_name
     
     plt.savefig(out_file, dpi=300, bbox_inches='tight')
     print(f"Successfully generated unique-colored seasonal chart: '{out_file}'")
@@ -230,7 +229,7 @@ def plot_ablation_metrics(all_predictions):
 if __name__ == '__main__':
     
     # Load cfg
-    exp_name = 't009_4' # 't009_1'
+    exp_name = 't009_1' # 't009_1'
 
     cfg_file = 'config_' + exp_name + '.yaml'
     cfg_path = Path('files', 'configs', cfg_file)
@@ -294,4 +293,4 @@ if __name__ == '__main__':
 
 
     plot_ablation_metrics(all_predictions)
-    plot_implicit_seasonal_trend(all_predictions)
+    plot_implicit_seasonal_trend(all_predictions, out_path=out_path)

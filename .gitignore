@@ -39,3 +39,5 @@ exports/model_evaluation/figs/lift_lead.png
 exports/model_evaluation/figs/lift_samp.png
 exports/ablation/ablation_mse_mae.png
 exports/ablation/seasonal_implicit_trend.png
+exports/tsne/tsne_glob.png
+exports/tsne/tsne_patch_track.png
