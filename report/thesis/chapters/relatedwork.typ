@@ -151,6 +151,10 @@ Furthermore, little to no information is available regarding discussions of temp
 
 Therefore, the main gap this research addresses, regards temporal flexibility of a predictive mechanism. This includes 3 dependencies: the scope of input data a model uses to form its predictions, the temporal scope of prediction and the dependency on model accuracy to make predictions for the distant future (lead-time). Furthermore, an investigation into feature importance via ablation studies is crucial to understanding predictive performance and will represent a second focus of this work.
 
+As a guide, the objectives defined above have here been defined as guiding research questions:
 
-
+#figure(
+  enum[To which extent can spatio-temporal transformers to predict probability of wildfire occurrence?][How does the temporal extent of input data influence predictive accuracy?][How does model prediction vary under extensive lead-times?][To which extent can the importance of input data types be quantified?],
+  caption : [Research Questions]
+) <fig:research_questions>
 

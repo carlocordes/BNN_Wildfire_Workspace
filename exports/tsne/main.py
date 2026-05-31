@@ -71,7 +71,7 @@ def evaluate_model_tsne(model, dataloader: DataLoader):
 
             # Adaptive pooling to match patch resolution
             patch_preds = F.adaptive_avg_pool2d(pred_map, (grid_h, grid_w))
-            patch_probabilities = torch.sigmoid(patch_preds - correction_logit)
+            patch_probabilities = torch.sigmoid(patch_preds)
 
             # --- PRESERVE STRUCTURES ---
             # Keep both flattened (for t-SNE) and 2D spatial layouts (for geographic plotting)
@@ -267,6 +267,9 @@ def plot_global_vector_space(time_frames, perplexity=30, max_display_points=3000
 
     plt.grid(True, linestyle=':', alpha=0.5, color='gray')
     plt.tight_layout()
+    fig_name = 'tsne_glob.png'
+    file_path = out_path / fig_name
+    plt.savefig(file_path, dpi = 300)
     plt.show()
 
     return global_2d, all_predictions
@@ -307,4 +310,4 @@ if __name__ == '__main__':
     time_frames = evaluate_model_tsne(model = model, dataloader=dataloader)
 
     track_single_patch(time_frames, patch_idx= 330)
-    #plot_global_vector_space(time_frames=time_frames)
+    plot_global_vector_space(time_frames=time_frames)
