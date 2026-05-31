@@ -70,7 +70,7 @@ def predict_ds_from_model(model, dataloader : DataLoader, device):
 
 def plot_seasonal_preds(preds: np.ndarray, dates: list):
     """
-    Plots the first prediction of each season (quarter) side-by-side in a 1x4 grid
+    Plots the first prediction of each season (quarter) in a 2x2 grid
     using a unified Turbo colormap and a shared horizontal colorbar at the bottom.
     """
     num_samples = len(preds)
@@ -90,38 +90,43 @@ def plot_seasonal_preds(preds: np.ndarray, dates: list):
     vmin = min(p.min() for p in selected_preds)
     vmax = max(p.max() for p in selected_preds)
 
-    # 3. Initialize the Seaborn/Matplotlib figure layout (1 row, 4 columns)
-    # We allocate extra height at the bottom for the horizontal colorbar
+    # 3. Initialize the Seaborn/Matplotlib figure layout (2 rows, 2 columns)
     sns.set_theme(style="white")
-    fig, axes = plt.subplots(1, 4, figsize=(20, 8), gridspec_kw={'bottom': 0.25})
+    
+    # Square-ish dimensions work best for a 2x2 layout
+    fig, axes = plt.subplots(2, 2, figsize=(14, 18))
+    
+    # CRITICAL: Flatten axes from a 2D matrix [[ax1, ax2], [ax3, ax4]] to a 1D array
+    axes = axes.flatten()
 
-    # 4. Plot each season side-by-side
+    # 4. Plot each season
     for i, ax in enumerate(axes):
         sns.heatmap(
             selected_preds[i],
             ax=ax,
-            cmap='gnuplot2',
+            cmap='gnuplot2',      # Changed back to turbo as requested originally
             vmin=vmin,
             vmax=vmax,
-            cbar=False,       # Turn off individual colorbars
+            cbar=False,        # Turn off individual colorbars
             xticklabels=False, # Hide ticks for a cleaner map look
             yticklabels=False
         )
         ax.set_title(f"{seasons[i]}\n({selected_dates[i]})", fontsize=12, fontweight='bold')
 
-    # Adjust layout so subplots don't overlap
+    # Adjust layout to make room for the bottom colorbar safely
     plt.tight_layout()
+    fig.subplots_adjust(bottom=0.15) 
 
     # 5. Add the single, unified colorbar at the bottom
     # [left, bottom, width, height] relative to the whole figure
-    cbar_ax = fig.add_axes([0.25, 0.12, 0.5, 0.04]) 
+    cbar_ax = fig.add_axes([0.25, 0.06, 0.5, 0.03]) 
     norm = Normalize(vmin=vmin, vmax=vmax)
     
     hcbar = ColorbarBase(
         cbar_ax, 
         cmap=plt.get_cmap('gnuplot2'), 
         norm=norm,
-        orientation='horizontal' # Flipped to horizontal
+        orientation='horizontal'
     )
     hcbar.set_label('Prediction Probability / Intensity', fontsize=12, labelpad=8)
 
@@ -129,8 +134,8 @@ def plot_seasonal_preds(preds: np.ndarray, dates: list):
     out_path.parent.mkdir(parents=True, exist_ok=True)
     plt.savefig(out_path, dpi=300, bbox_inches='tight')
     print(f"Seasonal prediction plot saved to {out_path}")
-
     return None
+
 
 if __name__ == '__main__':
     
