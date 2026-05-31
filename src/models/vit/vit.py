@@ -127,7 +127,8 @@ class STViT(nn.Module):
         pos_embed = torch.cat([torch.sin(out_y), torch.cos(out_y), torch.sin(out_x), torch.cos(out_x)], dim=-1)
         return pos_embed.flatten(0, 1).unsqueeze(0)
 
-    def forward(self, x_static, x_dynamic, x_single_dynamic, ablate_static_idxs = None, ablate_dynamic_idxs = None):
+    def forward(self, x_static, x_dynamic, x_single_dynamic, ablate_static_idxs = None, ablate_dynamic_idxs = None,
+                return_tokens = False):
         B = x_static.shape[0]
 
         # [ORIGINAL] Concat single-layer dynamic into the static block sequence
@@ -231,4 +232,7 @@ class STViT(nn.Module):
         # [ORIGINAL] Slice off padding adjustments back to user raw target specifications
         pred_map = pred_map[:, 0:1, :orig_h, :orig_w]
         
-        return pred_map
+        if return_tokens == True:
+            return pred_map, x_2d
+        else:
+            return pred_map
