@@ -104,6 +104,7 @@
 //#include "appendices/useofai.typ"
 //#include "appendices/reproducibility.typ"
 //#include "appendices/someumldia.typ"
+//#include "appendices/configs.typ"
 
 //-- references
 #bibliography("./refs/refs.bib", style: "./refs/apa-annotated-bibliography_modified-HL.csl")

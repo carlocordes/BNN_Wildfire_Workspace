@@ -33,12 +33,16 @@ Furthermore, a strong seasonal trend can be detected. Apart from a few anomalies
 // Sampling logits back to a probability via class imbalance (log(600))
 
 == Experiment 1: Sample Extent
-The first sub-invetigation as defined by *RQ 2* in @fig:research_questions
+The first sub-investigation as defined by *RQ 2* in @fig:research_questions. Conceptually, this investigation attempts to discover the amount of context necessary for a valuable prediction to be made. The setup of the spatio-transformer allows for dynamic scaling of input features. The temporal scope of dynamic features, or simply the amount of images ingested per data module is variable. However, the early fusion concept chosen here demands every input token to be treated equally. This has the effect that the number of images in the input sample linearly scales the amount of tokens, which in turn scale the computational time quadratically. The maximum sample length feasible on hardware available is seven days, above which could not be investigated. In this experiment a lead-time of zero days was chosen. Four otherwise equally defined models were trained with respective sample extents of 1, 3, 5 and 7 days.
 
 #figure(
   image("../figs/model_seq_compare.png", width : 100%),
   caption : [Training performance of models with varying sample length]
 ) <fig:samp_train_results>
+
+@fig:samp_train_results shows the 
+
+
 
 #figure(
   image("../figs/lift_samp.png"),
