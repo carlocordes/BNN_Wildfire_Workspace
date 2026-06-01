@@ -203,7 +203,7 @@ if __name__ == '__main__':
     latmin, longmin = 36.812, -9.490
     latmax, longmax = 42.2724, -6.0234
 
-    start_date = '2023-01-01'
+    start_date = '1999-01-01'
     end_date = '2026-01-09'
 
     portugal_ggrid = GoldenGrid(
@@ -214,8 +214,11 @@ if __name__ == '__main__':
         end_date = end_date,
         day_interval = 1
     )
-
+    """
     download_area_with_uncertainty(
         golden_grid = portugal_ggrid, 
         out_path = Path('data', 'raw', 'target_zarr')
     )
+    """
+    out_path = Path('files', 'test', 'yearly_burn')
+    download_annual_images(portugal_ggrid, out_path = out_path)
