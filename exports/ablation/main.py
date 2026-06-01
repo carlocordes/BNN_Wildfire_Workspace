@@ -252,7 +252,7 @@ if __name__ == '__main__':
     )
 
     # Data
-    dataset = SpatialTemporalDataset(cfg_path, split_type="test", benchmark_mode=True)
+    dataset = SpatialTemporalDataset(cfg_path, split_type="test", benchmark_mode=False)
     dataloader = DataLoader(
         dataset, batch_size=1, shuffle=False, num_workers=1,
         pin_memory=False, collate_fn=skip_missing_collate_fn

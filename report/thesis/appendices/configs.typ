@@ -2,7 +2,7 @@
 #import "@preview/codly-languages:0.1.1": *
 #show: codly-init.with()
 
-= Experiment Configs
+= Experiment Configs <appendix:configs>
 
 == Experiment 1: Sequence Extent
 
