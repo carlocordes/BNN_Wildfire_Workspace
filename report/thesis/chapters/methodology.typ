@@ -4,6 +4,9 @@
 = Methodology <chap:methodology>
 This section provides an overview of the methodological choices made in the investigation. First, a short account of the system overview is given, before an account for the construction of data into datasets is made. Further, a complete walk-throug of the model architecure is given. Finally, the integration of the model into a training workflow is explained.
 
+//Actual goal: infering predictions from records
+As described previously, the objective of this methodology is to use multi-modal satellite imagery from both static and temporally dynamic features to model pure wildfire risk of occurrence. The underlying ground truth
+
 == Workflow & System Overview <sec:method>
 #todo(stroke : red)[work in progress] 
 #figure(
@@ -70,11 +73,11 @@ In order to motivate the structure of the here applied transformer, this section
 
 
 
-=== Spatial Embedding <subsec:encoding>
-The initial objective of the transformer model revolves around turning input data into tokens via patch embedding. The patch size, a model hyperparameter, defines the pixel extent of square patches every input image is divided into. As we handle only single-band data we treat the image as a grid of height and width: $h times w$. 
+=== Spatial Encoding <subsec:encoding>
+The initial objective of the transformer model revolves around turning input data into tokens by segmenting it into equal patchs (e.g. 16x16 pixels). The patch size, a model hyperparameter, defines the pixel extent of square patches every input image is divided into. As we handle only single-band data we treat the image as a grid of height and width: $h times w$. 
 
 // Reflective padding (h_pad x w_pad)
-This is realized via a 2D convolution with stride equal to the desired patch size. This ensures zero overlap between neighbouring patches. An important element to consider is the fact that both height and width of images need not be divisible without rest by the patch size. To counter this we use reflective padding, a process which mirrors input images around their edges to fill in pixel data until the next complete patch. Extending height and width to $h_(p a d)$ & $w_(p a d)$ allows for perfect image division into patches. As the model input consists of multiple modules $M$ for consecutive time steps $t$ that are processed in batches $B$ ^of variable sizes the input tensor has dimensionality:
+This is realized via a 2D convolution with stride equal to the desired patch size. This ensures zero overlap between neighbouring patches. An important element to consider is the fact that both height and width of images need not be divisible without rest by the patch size. To counter this we use reflective padding, a process which mirrors input images around their edges to fill in pixel data until the next complete patch. Extending height and width to $h_(p a d)$ & $w_(p a d)$ allows for perfect image division into patches. As the model input consists of multiple modules $M$ for consecutive time steps $t$ that are processed in batches $B$ of variable sizes the input tensor has dimensionality:
 $ macron(T) in  RR ^(B times M times t times h_(p a d) times w_(p a d)) $ 
 
 #todo(stroke: orange)[Figure of reflective patch padding]
@@ -101,7 +104,7 @@ $ w  = mat(
 //Dynamic to feature amount -> config defines no. of static/dynamic channels
 The convolution weights are learnable and are only shared between samples of the same module. Every module is assigned an independent convolution operation and individual weights.
 
-=== Temporal embedding
+=== Temporal encoding
 The model architecture demands a separate routing of static and dynamic data channels. All dynamic modules with multiple time steps receive a temporal encoding that is an extension to the one described in @subsec:encoding. The objective of this is to give patches that describe the same physical area in different time steps a closer connection to one another. This is done by treating the different time steps for one module together. The single-image 2D convolution is replaced by a 3D convolution that treats the series of images of timesteps $t$ as a 3-dimensional set of values and projects it into the embedding dimension $d_(e m b e d)$:
 
 $ RR ^ (t times d_(p a t c h) times d_(p a t c h)) ->  RR ^ (d_(e m b e d)) $ <eq:3d_conv>
@@ -110,14 +113,14 @@ The convolutional operation is analogous to @eq:2dkernel for a static embedding 
 
 $ w in RR ^ (d_(e m b e d) times 1 times P ^ 2) $
 
-In essence, this step results in a token for every patch in every timestep of every image. This effectively patches every timestep in every module independently.The objective here is to prevent the immediate blending of time steps, as this is the objective of the transformer layers at a later stage.
+In essence, this step results in a token for every patch in every timestep of every image. This effectively patches every timestep in every module independently. The objective here is to prevent the immediate blending of time steps, as this is the objective of the transformer layers at a later stage.
 
 
 
 === Spatial Embedding
 Having obtained a set of embeddings for all images of varying modalities in the model input, this part of the transformer architecture intends to introduce spatial and temporal relationships between the patches called #emph[embeddings]. These greatly influence the magnitude with which patches learn from each other.
 
-The spatial embedding is applied to every patch regardless of being temporally dependency or not. The idea is to assert a learnable idea of proximity from one patch to another. As wildfires are localized phenomena, the the objective of the spatial embedding here is to give neighbouring patches a strong correlation. Distant patches, while sharing lower correlation, can still influence one another, with limited effect. The important difference to a convolution here is that we do not simply rule out distant relationships but keep them contained. Rather than imposing a relationship on the transformer, we give it rough guidelines and freedom to give high weight to the relationship even between distant patches. Having created a notion of spatial similarity is crucial for the later attention process in which more similar patches will conduct higher weighted attention with one another.
+The spatial embedding is applied to every patch regardless of being temporally dependent or not. The idea is to assert a learnable idea of proximity from one patch to another. As wildfires are localized phenomena, the the objective of the spatial embedding here is to give neighbouring patches a strong correlation. Distant patches, while sharing lower correlation, can still influence one another, with limited effect. The important difference to a convolution here is that we do not simply rule out distant relationships but keep them contained. Rather than imposing a relationship on the transformer, we give it rough guidelines and freedom to give high weight to the relationship even between distant patches @rotarypositionembedding. Having created a notion of spatial similarity is crucial for the later attention process in which more similar patches will conduct higher weighted attention with one another.
 
 In order to create such a relationship we come up with an individual positional encoding for every patch that is added onto each embedding:
 
@@ -134,12 +137,12 @@ $ arrow(e)_"pos" = vec(sin(h omega), cos(h omega), sin(w omega), cos(w omega)) i
 @fig:embedding_dims shows samples of the modes of the positional embeddings for every patch in the input image, in this case $80 times 40$. These include waves that propagate in direction of height and width. For every patch we add the embedding values of all dimensions. 
 
 #figure(
-  image("../figs/encoding_dims_visual.png", width:110%),
+  image("../figs/encoding_dims_visual.png", width:100%),
   placement: auto, 
   caption: [Additive encoded values per encoding dimension],
 ) <fig:embedding_dims>
 
-Given the multitude of modes, we can form very individualised encodings for all patches. @fig:embedding_simil shows the cosine similarity of patches to one another for different embedding dimensions. Here the central patch serves as an anchor-patch, with the values of all patches describing its similarity to it. This shows that sinusoidal positional embedding is able to establish similarities and differences between patches, depending on their respective proximity. Furthermore, it is important to mention that the utility of this process heavily depends on the embedding dimension chosen. A higher embedding dimension allows to pass more sinusoidal modes and hence to create a more distinct characterization of each patch. We here show the cosine similarity for three embedding dimensions, which are more descriptive for larger values.  
+Given the multitude of modes, we can form very individualised encodings for all patches. @fig:embedding_simil shows the cosine similarity of patches to one another for different embedding dimensions as demanded from the spatial embedding. Every pixel in the images represents a single patch. Here, the central patch serves as an anchor-patch, with the values of all patches describing its similarity to it. This shows that sinusoidal positional embedding are able to establish similarities and differences between patches, depending on their respective proximity. Furthermore, it is important to mention that the utility of this process heavily depends on the embedding dimension chosen. A higher embedding dimension allows to pass more sinusoidal modes and hence to create a more distinct characterization of each patch. We here show the cosine similarity for three embedding dimensions. We detect a clear trend that when treating choosing higher embedding dimensions will lead to sharper definitions of similarity and differences of patches. 
 
 #figure(
   image("../figs/encoding_simil_visual.png", width:110%),
@@ -149,7 +152,7 @@ Given the multitude of modes, we can form very individualised encodings for all 
 
 
 === Temporal Embedding
-Weighing patches of the same modality against each other should be entirely up to the transformer model. Afterall it is the idea to find nuanced temporal relationships both within a modularity and between pairs of them. We therefore do not constrain the temporal relationships with weights but much rather provide an additional encoding of time which is added to every token that stems from a dynamic module. Used here is an encoding of the Julian day, which is simply an integer number of the day of the year (0-365). To make use of this in the best way, we encode the Julian day so that it captures the true nature of the climatological conditions: its cyclical nature. The embedding of a patch from a day in December should be close to one in the beginning of January, despite their Julian day being far apart.
+Weighing patches of the same modality against each other should be entirely up to the transformer model. Afterall, the idea is to find nuanced temporal relationships both within a modularity and between pairs of them. To enforce distinct temporal relationships between dynmic tokens as well as a global perception of the model for seasonality we include an additional temporal encoding for all dynamic modules.Used here is an encoding of the Julian day, which is simply an integer number of the day of the year (0-365). To make use of this in the best way, we encode the Julian day so that it captures the true nature of the climatological conditions: its cyclical nature. The embedding of a patch from a day in December should be close to one in the beginning of January, despite their Julian day being far apart.
 
 Making such an embedding is realized through a two-step process, first mapping the Julian day $J_t$ into a clock-like cyclical two-dimensional space and then translating it into the embedding dimension. The translation into a cyclical representation $v_t$ is done using a sinusoidal projection via:
 
@@ -175,7 +178,9 @@ The final transformer-ready embeddings for static and dynamic tokens are additio
 Simply adding large vectors to our representations of patches might seem counterintuitive at first, however it is crucial to remember that the representations of data modularities are learnable. The longer the transformer architecture trains, them more it knows to contextualize a patch of precipitation data differently, depending on the time of year. The most elegant analogy to this process is music. If the raw encoding of a patch is analogous to a melody, the positional and temporal encoding represent the harmony accompanying it. Music is propagated as the sums of interfering frequencies, however they are discretely distinguishable to the human ear. The same is true for the transformer, it learns to contextualize the raw encoding (melody) given an extra set of information, the embeddings (harmony).
 
 === Token Unification
-The heart of the concept in this model relies on early fusion. Rather than separating tokens per module, this approach allows for patches accross time and modularity to freely communicate with all others. Despite having the drawback of computational load here, this is a crucial design choice with the purpose of not overconstraining the system. The token unification step therefore concatenates embeddings into a joint sequence, as a preparation for the next step. Crucially, the order of tokens is of no importance here as the attention steps that follow are invariant to permutation of tokens. Furthermore, due to the spatial and temporal embeddings and embedding tags, tokens are uniquely identifiable. 
+The heart of the concept in this model relies on early fusion. Rather than separating tokens per module, this approach allows for patches accross time and modularity to freely communicate with all others. Despite having the drawback of computational load here, this is a crucial design choice with the purpose of not overconstraining the system. With respect to wildfire modelling, this is a great asset. Data modularities will have varying levels of temporal depndencies. As an example, while the last timestep of wind speed might be sufficient to cast a valuable prediction, the land surface temperature might need to be tracked over the course of a few days to cause wildfire favoring conditions. The setup of keeping all tokens of all modules separate rather than concatenating them early allows for exactly these dependencies to be found in attention.
+
+ The token unification step therefore concatenates embeddings into a joint sequence, as a preparation for the next step. Crucially, the order of tokens is of no importance here as the attention steps that follow are invariant to permutation of tokens. Furthermore, due to the spatial and temporal embeddings and embedding tags, tokens are uniquely identifiable. 
 The tensor at this stage holds embeddings accross all timesteps, patches and modules in one place:
 $ macron(T) in  RR ^ (B times [h dot w(n_"dyn" dot t plus n_"static")] times d_"embed") = RR ^(B times n_"token" times d_"embed") $
 
@@ -342,8 +347,9 @@ Another parameter $accent(v, hat)_i$ tracks the erraticism a parameter shows dur
 == Experiments
 The aim of this study is mainly to create such a spatio-temporal transformer model that serves as a predictor for wildfire events. More specifically, focus will be given to investigating the temporal dependencies of both the input sample and output targe. Investigation into how these drive accuracy will be given. Furthermore, it is crucial to understand feature importance. Therefore, the ladder part will focus on extracting feature importance.
 
-To guide the reader through these experiments the following research questions motivate the study of each:
+To guide the reader through the results of the research, every research question, as defined in @fig:research_questions, will be addressed concretely by an experiment in @chap:results:
 
-1. *Varying sample/target length:* How does temporal depth influence climatological contextualization and prediction accuracy?
-2. *Lead time horizon stress test:* How does prediction vary under extensive lead time (future prediction)?
-3. *Ablation studies:* - How does prediction accuracy under constrataints of input datasets?
+- *RQ 1* $arrow$ Experiment 1: Baseline Model
+- *RQ 2* $arrow$ Experiment 2: Varying sample/target length
+- *RQ 3* $arrow$ Experiment 3: Lead time horizon stress test
+- *RQ 4* $arrow$ Experiment 4: Ablation studies

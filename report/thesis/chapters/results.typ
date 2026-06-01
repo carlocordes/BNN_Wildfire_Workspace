@@ -1,9 +1,9 @@
 #import "../template.typ"
 
-= Results
+= Results <chap:results>
 To start guiding through the results of this investigation, the research questions formulated in @fig:research_questions will continuously be referenced in the following section to ensure concrete discussion of the defined goals. 
 
-== The Baseline Model
+== Experiment 1: The Baseline Model
 // Basic introduction to results
 
 As a proof of concept and a discussion of *RQ 1* in @fig:research_questions, here follows a description of the choices made to yield a working model that can confidently predict wildfire occurence probability.
@@ -35,8 +35,35 @@ Furthermore, a strong seasonal trend can be detected. Apart from a few anomalies
 
 // Sampling logits back to a probability via class imbalance (log(600))
 
-== Experiment 1: Sample Extent
-The first sub-investigation as defined by *RQ 2* in @fig:research_questions. Conceptually, this investigation attempts to discover the amount of context necessary for a valuable prediction to be made. The setup of the spatio-transformer allows for dynamic scaling of input features. The temporal scope of dynamic features, or simply the amount of images ingested per data module is variable. However, the early fusion concept chosen here demands every input token to be treated equally. This has the effect that the number of images in the input sample linearly scales the amount of tokens, which in turn scale the computational time quadratically. The maximum sample length feasible on hardware available is seven days, above which could not be investigated. In this experiment a lead-time of zero days was chosen. Four otherwise equally defined models were trained with respective sample extents of 1, 3, 5 and 7 days.
+== Experiment 2: Sample Extent
+The first sub-investigation as defined by *RQ 2* in @fig:research_questions. Conceptually, this investigation attempts to discover the amount of context necessary for a valuable prediction to be made. The setup of the spatio-transformer allows for dynamic scaling of input features. The temporal scope of dynamic features, or simply the amount of images ingested per data module is variable. However, the early fusion concept chosen here demands every input token to be treated equally. This has the effect that the number of images in the input sample linearly scales the amount of tokens, which in turn scale the computational time quadratically. The maximum sample length feasible on hardware available is seven days, above which could not be investigated. In this experiment a lead-time of zero days was chosen. Four otherwise equally defined models were trained with varying sample extents, the experiment descriptions of which are shown in @tab:samp_configurations.
+
+
+
+#figure(
+  table(
+    columns : 3,
+
+    stroke: (x, y) => if y == 0 {
+    (bottom: 0.7pt + black)
+    },
+
+    align: (x, y) => (
+      if x > 0 { center }
+      else { left }
+    ),
+
+    table.header(
+      [ *Experiment Name* ], [ *Sample Extent* ], [*Target Extent*],
+    ),
+    [SampleExt1], [1], [14],
+    [SampleExt3], [3], [14],
+    [SampleExt5], [5], [14],
+    [SampleExt7], [7], [14],
+  ),
+  caption : [Sample extent experiment configurations]
+) <tab:samp_configurations>
+
 
 #figure(
   image("../figs/model_seq_compare.png", width : 100%),
@@ -71,8 +98,8 @@ As previously #emph[SampleExt5] underperforms compared to all other models, bein
 // Diminishing returns with overcontextualization
 
 
-== Experiment 2: Lead-Time
-The second experiment relates to *RQ 3* of @fig:research_questions and investigates the extent to which varying the lead-time influences prediction abilities of the transformer. To reiterate, the lead-time describes the amount of time passed between the last seen training sample and the beginning of the target, the time frame of prediction as per @fig:temporal_scope. In this instance we test for five different lead times. The correct interpretation of #emph[Lead-5] is that the sample and target extents overlap by five days. It therefore does not function as a predictor, but more as a wildfire tracker and has here been included to show the influence of a temporal overlap or a negative lead time.
+== Experiment 3: Lead-Time
+The second experiment relates to *RQ 3* of @fig:research_questions and investigates the extent to which varying the lead-time influences prediction abilities of the transformer. To reiterate, the lead-time describes the amount of time passed between the last seen training sample and the beginning of the target, the time frame of prediction as per @fig:temporal_scope. In this instance we test for five different lead times, as shown in @tab:lead_configurations. The correct interpretation of #emph[Lead-5] is that the sample and target extents overlap by five days. It therefore does not function as a predictor, but more as a wildfire tracker and has here been included to show the influence of a temporal overlap or a negative lead time.
 
 #figure(
   table(
@@ -119,7 +146,7 @@ The lift curve shows similar trends. With a Gini-coefficient of $0.635$ sets the
 
 Combining insights from both analyses shows, that a five-day lead-time is highly performant under predictive circumstances. Both a stable Gini-coefficient of the lift curve and relatively good validation to testing loss ratio can be seen for this model making it a viable option for fire management purposes. Furthermore, #emph[Lead-5] underlines the validity of the architecutre, by showing that it can spatially segment features. Long lead-times here stress test the network showing that inherent noise and missing data are issues that are especially extended into the future prediction domain.
 
-== Experiment 3: Ablation Studies
+== Experiment 4: Ablation Studies
 Frequently, due to the complex nature of transformer architectures, not enough reasoning about the inner workings and performance is done (@fig:research_questions, *RQ4*). Hence, we here devote a section to ablation studies, more specifically to test the performance of the model under constrained circumstances. 
 
 To offer a structural window into the behaviour of the model we here take a trained model and predict one year of data with one or multiple input features removed. For each, we track both the mean absolute error (MAE) and the mean squared error (MSE), the ladder penalizing especially large errors. All comparisons are made to the pre-trained baseline model #emph[SampleExt3] with a lead-time of zero , sequence extent of three and a target prediction of 14 days. Computationally, this is achieved by intervening in the forward pass of the prediction. By setting input data of single or combinations of models to zero, all attention blocks which rely on this information will yield zero as well. In essence, this constraint allows the model to behave as if certain information (e.g. terrain) is not available.
