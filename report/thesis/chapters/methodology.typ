@@ -346,9 +346,15 @@ Another parameter $accent(v, hat)_i$ tracks the erraticism a parameter shows dur
 
 
 == Experiments
-The aim of this study is mainly to create such a spatio-temporal transformer model that serves as a predictor for wildfire events. More specifically, focus will be given to investigating the temporal dependencies of both the input sample and output targe. Investigation into how these drive accuracy will be given. Furthermore, it is crucial to understand feature importance. Therefore, the ladder part will focus on extracting feature importance.
+To provide valuable discussion of the research questions defined in @fig:research_questions, the experiments carried out for this work each cater to one of them. The main study involves creating a baseline version of the spatio-temporal transformer as well as the general study of how the labeled binary ground truth data yields a predicted uncertainty map. By studying an entire year worth of predictions, this experiment is able to establish initial spatio-temporal pattern the transformer learns.
 
-To guide the reader through the results of the research, every research question, as defined in @fig:research_questions, will be addressed concretely by an experiment in @chap:results:
+The next section focuses on the main objective of this investigation, which is to investigate how varying time configurations affect the model. More closely, we investigate how the amount of temporal context, or as here named sample extent, is useful or ideal for spatio-temporal transformers to cast the most precise predictions. The analysis will include a performance comparison of training parameters as well as quantitative discussion of spatial risk distribution is given.
+
+The third experiment focuses on the capacity of the model to make accurate predictions when elongating lead-time and viewing further into the feature. By modifying the set-up of system configurations, we test five different versions and compare elongated lead-time model accuracy.
+
+Experiment four focuses on evaluating the validity of the methodology in terms of its input data. An ablation study into feature impact is carried out, via predicting a set of targets with a constrained model. Essentially, removing information and tracking the added error in the outcome allows for a systematic ranking of feature impact.
+
+In short, the experiments presented in @chap:results each address a research question of @fig:research_questions:
 
 - *RQ 1* $arrow$ Experiment 1: Baseline Model
 - *RQ 2* $arrow$ Experiment 2: Varying sample/target length

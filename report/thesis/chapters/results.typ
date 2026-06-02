@@ -1,6 +1,6 @@
 #import "../template.typ"
 
-= Results <chap:results>
+= Results & Discussions <chap:results>
 To guide through the results of this investigation, the research questions formulated in @fig:research_questions will continuously be referenced in the following section to ensure concrete discussion of the defined goals. 
 
 == Experiment 1: The Baseline Model
@@ -86,7 +86,7 @@ On the other end of the spectrum, #emph[SampleExt7] uses the most contextual inf
   caption : [Lift curves and Gini-coefficients of comparable models]
 ) <fig:samp_lift>
 
-To further demonstrate the models abilities and illustrate their differences @fig:samp_lift illustrates cumulative gains of lift-charts of the models. Essentially, the methdology here argues that for such a rare event like wildfires, most of the risk should be contained in a fraction of the total area. The set of predictions, presented on the x-axis, has here been ordered in descending order of predicted risk. A model that would simply guess randomly would show a uniform distribution of risk over all pixels, as denoted by the random spatial baseline. A well-trained model on the other hand should be able to contain large amounts of the actual fires in very few image pixels.
+To further demonstrate the models abilities and illustrate their differences, @fig:samp_lift illustrates cumulative gains of lift-charts of the models. Essentially, the methdology here argues that for such a rare event like wildfires, most of the risk should be contained in a fraction of the total area. The set of predictions, presented on the x-axis, has here been ordered in descending order of predicted risk. A model that would simply guess randomly would show a uniform distribution of risk over all pixels, as denoted by the random spatial baseline. A well-trained model on the other hand should be able to contain large amounts of the actual fires in very few image pixels.
 
 All four models show this behaviour, proving they operate without having to guess randomly. The clear categorical winner from this perspective is again #emph[SampleExt3], with the highest overall Gini-coefficient of $0.620$. It is able to contain roughly $70%$ of actual fires within $20%$ of the total area. 
 

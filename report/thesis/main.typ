@@ -38,7 +38,7 @@
   }
   #outline(depth: 2, indent: auto)
 ]
-/*
+
 #{
   show outline: it => {
     [#in-outline.update(true)]
@@ -57,7 +57,7 @@
   title: [List of algorithms],
   target: figure.where(kind: "algorithm"),
 )
-*/
+
 #outline(title: "TODOs", target: figure.where(kind: "todo")) <all-todos>
 
 // page counter anchor

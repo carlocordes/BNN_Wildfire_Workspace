@@ -72,6 +72,8 @@ Most important for a valid prediction mechanism is a valuable ground truth datas
 
 The target extent, a system paramter passed by the config file, defines the temporal extent for which a prediction should be made (e.g. 14 days). We use the previously created zarr containing daily burn records as the basis for this feature. In essence, we use a continuous sliding window that computes the union of 14 consecutive days of burn records and stores it as a new module in the zarr container. These images will later represent the feature which the model predictions are compared to and updated accordingly. As some pixels may never have burnt, we must opt for a maximum value, hence introducing a small bias. Here it was set at 7300 days or roughly 20 years.
 
+#todo(stroke: orange)[Ground Truth diagram with explanation]
+
 === Burn History
 // Retrieval from binary burn zarr
 Another feature which is derived from historical burn records is the burn history map. The idea here is to encode some information into the system, which describes the frequency and temporal behaviour of fire events for every location. As for all other features, we produce a burn history map for every day. The methodology here once again involves reading the binary burn history zarr file and extracting all burn records previous to the desired date. As for one pixel, multiple fires might have occured, we compute the amount of days since the last seen event for each pixel. This historical map is computed for all days availlable in the catalogue and is stored back to a new zarr modality.

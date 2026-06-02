@@ -19,6 +19,7 @@ from matplotlib.colors import Normalize
 # ----- CONFIG ----- #
 correction_logit = math.log(600)
 out_path = Path('exports', 'seasonal_prediction', 'season_pred.png')
+tif_out_folder
 # ------------------ #
 
 
