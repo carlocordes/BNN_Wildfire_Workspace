@@ -2,12 +2,11 @@
 #set heading(numbering: "1.")
 
 = Methodology <chap:methodology>
-This section provides an overview of the methodological choices made in the investigation. First, a short account of the system overview is given, before an account for the construction of data into datasets is made. Further, a complete walk-throug of the model architecure is given. Finally, the integration of the model into a training workflow is explained.
+This section provides an overview of the methodological choices made in the investigation. First, a short account of the system overview is given, before an account for the construction of data into datasets is made. Further, a complete walk-through of the model architecure is given. Finally, the integration of the model into a training workflow is explained.
 
-//Actual goal: infering predictions from records
-As described previously, the objective of this methodology is to use multi-modal satellite imagery from both static and temporally dynamic features to model pure wildfire risk of occurrence. The underlying ground truth
 
 == Workflow & System Overview <sec:method>
+
 #todo(stroke : red)[work in progress] 
 #figure(
 ```yaml

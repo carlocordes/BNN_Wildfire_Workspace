@@ -86,12 +86,12 @@
 #counter(page).update(1)
 #set heading(numbering: "1.")
 
-//#include "chapters/introduction.typ"
+#include "chapters/introduction.typ"
 #include "chapters/relatedwork.typ"
 #include "chapters/data.typ"
 #include "chapters/methodology.typ"
 #include "chapters/results.typ"
-
+#include "chapters/conclusions.typ"
 //-- back-matter
 // must take page breaks into account, may need to be offset by +1 or -1
 // #context counter(page).update(counter(page).at(<front-matter>).first())

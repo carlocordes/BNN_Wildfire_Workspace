@@ -102,11 +102,11 @@ Attention rarely is caried out in such single operations but in many blocks. The
 
 Crucially, the computations of each head and block are independent of each other, making this process highly parallelizable and computationally convenient to compute with large Graphics Processing Units (GPU).
 
-
+/*
 === Johnson-Lindenstrauß Lemma & Vector representations
 #todo(stroke :green)[Work in progress]
 #citep(<johnson-lindenstrauss>)
-
+*/
 
 === Vision Transformers
 The concept of using embedded sequences as predictors quickly caught on for vision tasks. The bottleneck resided in establishing an analogy to what a token should represent in images. Using the naive approach in extracting a token for each pixel value in every image quickly scales above computable limits as using $N$ tokens for an image of height $h$ and width $w$ scales quadratically with image resolution ($N = h times w$). Furthermore, attention processes also scale as $O(n_"tokens"^2)$ as per @eq:attention, this would quickly lead to unfeasible computations @vision-trans-stats. The solution was found in extracting not raw pixel values, but patches of them. By flattening each patch into a vector and projecting this into an embedding dimension an analogous structure to embedding was found @transformer-image. It is hereby important that the embedded values are not the exact pixel values but are the product of a convolution operation. This mechanism outperformed convolutional approaches on predicting labelled such as ImageNet, CIFAR-100 or BTAB. 
