@@ -33,6 +33,14 @@ Next, it is without surprise that the model has successfully learned the differe
 
 Furthermore, a strong seasonal trend can be detected. Apart from a few anomalies, the overall risk is near zero for early months as Portugal is in winter season. Peak fire periods are June to September as shown, after which rain season in October usually takes wildfire risk down to zero again. By encoding of the Julian day, the general disparity between winter and summer climate or a combination of both, the model has learned the ability to distinguish seasonality.
 
+
+#figure(
+  image("../figs/unified_comparison.png"),
+  caption : [Complete and zoomed view of Sentinel-2 orthophoto, predictions and ground truth ]
+)
+
+// Talk about: it works, it predicts something right, it learned coastal contours
+
 // Sampling logits back to a probability via class imbalance (log(600))
 
 == Experiment 2: Sample Extent

@@ -21,6 +21,8 @@ files/*
 
 files/configs/fix.yaml
 
+exports/*/*/*.tif
+
 mnt/
 exports/dataset_viewer/all_samples.png
 exports/julian_day_enc/julian_day.png
@@ -69,3 +71,4 @@ report/thesis/draw_io/zarr_files/stencils.min.js
 report/thesis/draw_io/zarr_files/svg.js
 report/thesis/draw_io/zarr_files/svg(1).js
 report/thesis/draw_io/zarr_files/tex.js
+exports/detailed_results/unified_comparison.png

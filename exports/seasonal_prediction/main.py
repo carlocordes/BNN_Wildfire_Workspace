@@ -8,6 +8,9 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
 import math
+import rasterio
+from rasterio.transform import from_bounds
+from pyproj import Transformer
 from pathlib import Path
 from datetime import datetime
 import numpy as np
@@ -19,7 +22,7 @@ from matplotlib.colors import Normalize
 # ----- CONFIG ----- #
 correction_logit = math.log(600)
 out_path = Path('exports', 'seasonal_prediction', 'season_pred.png')
-tif_out_folder
+tif_out_folder = Path('exports', 'seasonal_prediction', 'preds')
 # ------------------ #
 
 
@@ -68,6 +71,7 @@ def predict_ds_from_model(model, dataloader : DataLoader, device):
     all_preds_tensor = torch.stack(all_probs, dim = 0)
     
     return all_preds_tensor.detach().cpu().numpy(), all_dates
+
 
 def plot_seasonal_preds(preds: np.ndarray, dates: list):
     """
@@ -138,6 +142,58 @@ def plot_seasonal_preds(preds: np.ndarray, dates: list):
     return None
 
 
+def write_tifs(preds: np.ndarray, dates: list):
+    """
+    Saves each prediction frame as a georeferenced GeoTIFF file.
+    """
+    # 1. Define Spatial Metadata
+    crs_target = 'EPSG:3763'
+    latmin, longmin = 36.812, -9.490
+    latmax, longmax = 42.2724, -6.0234
+    
+    # 2. Transform the bounding box from Lat/Long (EPSG:4326) to Project Meters (EPSG:3763)
+    # always_xy=True ensures we map (long, lat) -> (X, Y)
+    transformer = Transformer.from_crs("EPSG:4326", crs_target, always_xy=True)
+    
+    # Transform bottom-left and top-right corners
+    xmin, ymin = transformer.transform(longmin, latmin)
+    xmax, ymax = transformer.transform(longmax, latmax)
+    
+    # Ensure the output directory exists
+    tif_out_folder.mkdir(parents=True, exist_ok=True)
+    print(f"Saving georeferenced TIFs to '{tif_out_folder}'...")
+
+    for i, (pred, date_obj) in enumerate(zip(preds, dates)):
+        date_str = date_obj.strftime('%Y-%m-%d')
+        file_path = tif_out_folder / f"{date_str}.tif"
+        
+        if file_path.exists():
+            file_path = tif_out_folder / f"{date_str}_{i}.tif"
+
+        height, width = pred.shape
+        
+        # 3. Create the affine transform matrix using the projected bounds
+        # Rasterio maps from West to East (xmin to xmax) and North to South (ymax to ymin)
+        transform = from_bounds(xmin, ymin, xmax, ymax, width, height)
+        
+        # 4. Configure Profile
+        profile = {
+            'driver': 'GTiff',
+            'height': height,
+            'width': width,
+            'count': 1,
+            'dtype': 'float32',          
+            'crs': crs_target,           # Correctly sets the CRS to EPSG:3763
+            'transform': transform,      # Correctly maps pixels to Portugal TM06 coordinates
+            'nodata': -9999,             
+            'compress': 'lzw'            
+        }
+        
+        with rasterio.open(file_path, 'w', **profile) as dst:
+            dst.write(pred.astype(np.float32), 1)
+            
+    print("All georeferenced TIFs saved successfully!")
+    return None
 if __name__ == '__main__':
     
     # Load cfg
@@ -173,4 +229,7 @@ if __name__ == '__main__':
 
     preds, dates = predict_ds_from_model(model = model, dataloader = dataloader, device=device)
 
-    plot_seasonal_preds(preds, dates)
+    #plot_seasonal_preds(preds, dates)
+
+
+    write_tifs(preds=preds, dates=dates)
