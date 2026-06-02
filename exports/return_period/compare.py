@@ -35,7 +35,7 @@ def plot_files(path_to_gt: Path, path_to_preds: Path):
     plt.show()
 
 if __name__ == '__main__':
-    path_to_gt = Path('files', 'data', 'test', 'yearly_burn', 'model_rp.tif')
+    path_to_gt = Path('files', 'data', 'test', 'yearly_burn', 'fire_return_pd_25.tif')
     path_to_preds = Path('exports', 'return_period', 'model_rp.tiff')
     #path_to_gt = Path('exports', 'return_period',  'model_ap.tiff')
     #path_to_preds = Path('exports', 'return_period',  'preds_ap.tiff')

@@ -58,7 +58,12 @@ The instance of golden-grid is handed to each of the classes responsible for ret
 == Feature Engineering
 In the following steps we take a few important steps from raw data, towards a dataset that a transformer can understand and reliably extract information to learn from. There are a few significant pitfalls when preparing data for a model relying on simple correlation, which will be addressed here.
 
-A choice made to promote easier organisation and fast access of data is to store it in the commonly used Zarr-format. This is a data type can store 3D raster data, making it an ideal fit for time dependent phenomena. Furthermore, it is possible to consolidate data of different modalities into this structure. Zarr data furthermore has the ability to use a method called chunking, which allows for random access and slicing of all three dimensions, here two spatial and one temporal dimension and accross multiple datasets. More specifically, this allows for rapid data selection and loading from disk as opposed to loading georeferenced raster files. 
+A choice made to promote easier organisation and fast access of data is to store it in the commonly used Zarr-format. This is a data type can store 3D raster data, making it an ideal fit for time dependent phenomena. Furthermore, it is possible to consolidate data of different modalities into this structure as shown in @fig:zarr. Zarr data furthermore has the ability to use a method called chunking, which allows for random access and slicing of all three dimensions, here two spatial and one temporal dimension and accross multiple datasets. More specifically, this allows for rapid data selection and loading from disk as opposed to loading georeferenced raster files. 
+
+#figure(
+  image("../figs/zarr.svg", width : 70%),
+  caption: [Organization of multi-modular temporal rasters into zarr format]
+) <fig:zarr>
 
 
 === Ground Truth

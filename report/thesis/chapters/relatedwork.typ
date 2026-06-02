@@ -157,7 +157,18 @@ This work also investigates both the scope of input data a model uses to form it
 As a guide, the objectives defined above have here been defined as guiding research questions:
 
 #figure(
-  enum[To which extent can spatio-temporal transformers to predict probability of wildfire occurrence?][How does the temporal extent of input data influence predictive accuracy?][How does model prediction vary under extensive lead-times?][To which extent can the importance of input data types be quantified?],
-  caption : [Research Questions]
+  align(left)[
+    #enum[
+        To which extent can spatio-temporal transformers to predict probability of wildfire occurrence?
+      ][
+        How does the temporal extent of input data influence predictive accuracy?
+      ][
+        How does model prediction vary under extensive lead-times?
+      ][
+        To which extent can the importance of input data types be quantified?
+      ]
+    ],
+    caption : [Research Questions]
+
 ) <fig:research_questions>
 

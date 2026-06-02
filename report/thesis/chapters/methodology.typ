@@ -44,11 +44,10 @@ A section of the research objective is to assess the influences of the temporal 
 - *Lead Time:* The time between the last seen timestamp in the sample and first one in the target. In other words: the amount of time the model predicts into the future
 
 #figure(
-  image("../figs/temporal_configs.png", width:100%),
+  image("../figs/timeframes.svg", width:100%),
   placement: auto, 
   caption : [Definitions of temporal scope in project datasets]
 ) <fig:temporal_scope>
-#todo(stroke : orange)[Update figure of timestamp configurations]
 
 Every sample is constructed by 3 different kinds of data, that are read, packaged together and channeled into the model:
 - Static: equivalent in every sample, describes non-variable data (e.g. terrain)
@@ -66,9 +65,12 @@ Moving data from images into the Pytorch framework is done using its fundamental
 
 
 == Model Architecture <sec:model>
-In order to motivate the structure of the here applied transformer, this section walks through the sequential steps incoming data takes through the model. This represents one forward propagation. The later showcased training regiment makes this forward pass once for every batch in the training data, thus cycling through it an abundance of times.
+In order to motivate the structure of the here applied transformer, this section walks through the sequential steps incoming data takes through the model. This represents one forward propagation. The later showcased training regiment makes this forward pass once for every batch in the training data, thus cycling through it an abundance of times. The complete model architecture of the here proposed spatio-temporal vision transformer is depicted in @fig:architecture.
 
-#todo(stroke : orange)[Complete model architecture diagram and reference]
+#figure(
+  image("../figs/architecture.svg", width : 100%),
+  caption : [Architecture diagram of STViT (Spatio-Temporal Vision Transformer)]
+) <fig:architecture>
 
 
 
