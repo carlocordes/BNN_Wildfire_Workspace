@@ -105,7 +105,7 @@ $ w  = mat(
 //Dynamic to feature amount -> config defines no. of static/dynamic channels
 The convolution weights are learnable and are only shared between samples of the same module. Every module is assigned an independent convolution operation and individual weights.
 
-=== Temporal encoding
+=== Temporal Encoding
 The model architecture demands a separate routing of static and dynamic data channels. All dynamic modules with multiple time steps receive a temporal encoding that is an extension to the one described in @subsec:encoding. The objective of this is to give patches that describe the same physical area in different time steps a closer connection to one another. This is done by treating the different time steps for one module together. The single-image 2D convolution is replaced by a 3D convolution that treats the series of images of timesteps $t$ as a 3-dimensional set of values and projects it into the embedding dimension $d_(e m b e d)$:
 
 $ RR ^ (t times d_(p a t c h) times d_(p a t c h)) ->  RR ^ (d_(e m b e d)) $ <eq:3d_conv>

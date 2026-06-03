@@ -71,7 +71,7 @@ def evaluate_model_tsne(model, dataloader: DataLoader):
 
             # Adaptive pooling to match patch resolution
             patch_preds = F.adaptive_avg_pool2d(pred_map, (grid_h, grid_w))
-            patch_probabilities = torch.sigmoid(patch_preds)
+            patch_probabilities = torch.sigmoid(patch_preds - correction_logit)
 
             # --- PRESERVE STRUCTURES ---
             # Keep both flattened (for t-SNE) and 2D spatial layouts (for geographic plotting)
@@ -300,7 +300,7 @@ if __name__ == '__main__':
     )
 
     # Data
-    dataset = SpatialTemporalDataset(cfg_path, split_type="val", benchmark_mode=True)
+    dataset = SpatialTemporalDataset(cfg_path, split_type="val", benchmark_mode=False)
     dataloader = DataLoader(
         dataset, batch_size=1, shuffle=False, num_workers=1,
         pin_memory=False, collate_fn=skip_missing_collate_fn
@@ -309,5 +309,5 @@ if __name__ == '__main__':
 
     time_frames = evaluate_model_tsne(model = model, dataloader=dataloader)
 
-    track_single_patch(time_frames, patch_idx= 330)
+    #track_single_patch(time_frames, patch_idx= 330)
     plot_global_vector_space(time_frames=time_frames)
