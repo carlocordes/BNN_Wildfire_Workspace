@@ -2,9 +2,10 @@
 
 #heading(outlined: false)[Acknowledgements]
 
-Thanks to everyone, especially my supervisors and my dog (in that order).
-Obviously, thanks also to the brilliant minds who created this _fantastic_ template!
+As a good thesis is rarely the product of a single person's work, there is quite a list of people without whom this work would not have been possible.
 
-Lemongrass frosted gingerbread bites banana bread orange crumbled lentils sweet potato black bean burrito green pepper springtime strawberry ginger lemongrass agave green tea smoky maple tempeh glaze enchiladas couscous. Cranberry spritzer Malaysian cinnamon pineapple salsa apples spring cherry bomb bananas blueberry pops scotch bonnet pepper spiced pumpkin chili lime eating together kale blood orange smash arugula salad. Bento box roasted peanuts pasta Sicilian pistachio pesto lavender lemonade elderberry Southern Italian citrusy mint lime taco salsa lentils walnut pesto tart quinoa flatbread sweet potato grenadillo.
+First and foremost, my supervision team. Thank you Azarakhsh for being so enthusiastic about the work you do and pointing me in the right direction when it mattered the most. Thank you Justin for helping me in implementing my work and for being a fantastic, passionate mentor.
 
-Thai super chili apricot salad cocoa dark chocolate vitamin glow mushroom risotto red amazon pepper simmer udon noodles soba noodles dragon fruit cherries strawberry mango smoothie basil chickpea crust pizza cauliflower cherry bomb pepper mediterranean street style Thai basil tacos. Balsamic vinaigrette Indian spiced kimchi tofu sandwiches smoked tofu apple vinaigrette salty Thai sun pepper cayenne four-layer fiery fruit peach strawberry mango vegan Bulgarian carrot Italian linguine puttanesca green bowl lemon red lentil soup overflowing berries habanero golden one bowl.
+I'm also extremely grateful for the support I have received from the GRM-MOD department at Hannover RE, most notably Thorben Römer and Andreas Stein. Thank you for entrusting me with this topic and supporting me with valuable discussions along the way.
+
+Most importantly, no large project happens without family. Thank you to my parents and sister Lena for the relentless support especially as deadlines moved closer. I could not have done it without you. Last but certainly not least, thank you to all the _Geo-magicians_. Knowing that we are all in the same boat, working along in our beloved Geolab has been a true pleasure.
