@@ -9,7 +9,7 @@ This section provides an overview of the methodological choices made in the inve
 To ensure consistency throughout the training, here a short explanation of the operating modules as referenced in @fig:system_arch. All information regarding harmonization and location of input data, temporal extents and specification on training parameters are stored in a configuration file. Upon retrieving data via download, an instance of the #emph[Golden Grid] class is made, carrying all spatial and temporal parameters of the configuration to make sure data from different sources is projected alike. 
 
 #figure(
-  image("../figs/system-overview.svg"),
+  image("../figs/system-overview.png"),
   caption : [Overview of System architecture]
 ) <fig:system_arch>
 
@@ -29,7 +29,7 @@ A section of the research objective is to assess the influences of the temporal 
 - *Lead Time:* The time between the last seen timestamp in the sample and first one in the target. In other words: the amount of time the model predicts into the future
 
 #figure(
-  image("../figs/timeframes.svg", width:100%),
+  image("../figs/timeframes.png", width:100%),
   placement: auto, 
   caption : [Definitions of temporal scope in project datasets]
 ) <fig:temporal_scope>
@@ -53,7 +53,7 @@ Moving data from images into the PyTorch framework is done using its fundamental
 In order to motivate the structure of the here applied transformer, this section walks through the sequential steps incoming data takes through the model. This represents one forward propagation. The later showcased training regiment makes this forward pass once for every batch in the training data, thus cycling through it an abundance of times. The complete model architecture of the here proposed spatio-temporal vision transformer is depicted in @fig:architecture.
 
 #figure(
-  image("../figs/architecture.svg", width : 100%),
+  image("../figs/architecture.drawio.pdf", width : 100%),
   caption : [Architecture diagram of STViT (Spatio-Temporal Vision Transformer)]
 ) <fig:architecture>
 

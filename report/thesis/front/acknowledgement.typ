@@ -8,4 +8,6 @@ First and foremost, my supervision team. Thank you Azarakhsh for being so enthus
 
 I'm also extremely grateful for the support I have received from the GRM-MOD department at Hannover RE, most notably Thorben Römer and Andreas Stein. Thank you for entrusting me with this topic and supporting me with valuable discussions along the way.
 
-Most importantly, no large project happens without family. Thank you to my parents and sister Lena for the relentless support especially as deadlines moved closer. I could not have done it without you. Last but certainly not least, thank you to all the _Geo-magicians_. Knowing that we are all in the same boat, working along in our beloved Geolab has been a true pleasure.
+Most importantly, no large project happens without family. Thank you to my parents and my sister Lena for the relentless support. I could not have done it without you.
+
+Last but certainly not least, thank you to all the _Geo-magicians_. Knowing that we are all in the same boat, working along in our beloved Geolab has been a true pleasure.
