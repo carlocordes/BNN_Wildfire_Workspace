@@ -10,16 +10,24 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-OUT_PATH = Path('exports', 'model_evaluation', 'model_train_compare.png')
+OUT_PATH = Path('exports', 'model_evaluation', 'model_sample_compare.png')
 
 def plot_train_eval(data : pd.DataFrame):
 
-    # Set Seaborn theme styling
+    # Set Seaborn theme styling and middle-ground text sizes
     sns.set_theme(style="whitegrid")
+    sns.set_context("notebook", font_scale=1.2)
 
     df_sorted = data.reset_index(drop = True)
-    fig, axes = plt.subplots(1, 4, figsize=(13, 5), gridspec_kw={'width_ratios': [2.4, 2.4, 1.2, 1.2]})
-
+    
+    # Set up a 2x2 grid with custom width ratios (History: 4, Bar Chart: 1)
+    fig = plt.figure(figsize=(14, 8.5)) 
+    gs = fig.add_gridspec(2, 2, width_ratios=[4, 1], height_ratios=[1, 1])
+    
+    ax0 = fig.add_subplot(gs[0, 0])  # Top-Left: Train History
+    ax3 = fig.add_subplot(gs[0, 1])  # Top-Right: Final Test Loss
+    ax1 = fig.add_subplot(gs[1, 0])  # Bottom-Left: Val History
+    ax2 = fig.add_subplot(gs[1, 1])  # Bottom-Right: Best Val Loss
 
     if len(df_sorted) == 5:
         colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', "#A015E0"]
@@ -28,16 +36,15 @@ def plot_train_eval(data : pd.DataFrame):
 
     palette = sns.color_palette(colors)
 
-    # --- Plot 1: Train Loss History (Time Series) ---
-    ax0 = axes[0]
+    # --- ROW 1, PLOT 1: Train Loss History (Time Series) ---
     for idx, row in df_sorted.iterrows():
         sns.lineplot(
-            x=range(len(row['train_loss_history'])), 
-            y=row['train_loss_history'], 
+            x=range(len(row['train_history'])), 
+            y=row['train_history'], 
             label=row['name'], 
             marker='o',
             color=colors[idx], 
-            linewidth=2, 
+            linewidth=2.2, 
             ax=ax0
         )
     ax0.set_title('Train Loss History')
@@ -45,16 +52,35 @@ def plot_train_eval(data : pd.DataFrame):
     ax0.set_ylabel('Loss')
     ax0.legend()
 
-    # --- Plot 2: Validation Loss History (Time Series) ---
-    ax1 = axes[1]
+    # --- ROW 1, PLOT 2: Final Test Loss (Static Bar Chart) ---
+    sns.barplot(
+        x='name', 
+        y='test_loss', 
+        data=df_sorted, 
+        palette=palette, 
+        edgecolor='black', 
+        alpha=0.85, 
+        ax=ax3
+    )
+    ax3.set_title('Final Test Loss')
+    ax3.set_xlabel(None)
+    ax3.set_ylabel('Loss')
+    ax3.set_xticklabels(df_sorted['name'], rotation=45, ha='right')
+    ax3.set_ylim(0, 1)
+
+    # Native, safe method to pull text values directly from the plotted container
+    for container in ax3.containers:
+        ax3.bar_label(container, fmt='%.4f', padding=3, fontsize=14)
+
+    # --- ROW 2, PLOT 1: Validation Loss History (Time Series) ---
     for idx, row in df_sorted.iterrows():
         sns.lineplot(
-            x=range(len(row['val_loss_history'])), 
-            y=row['val_loss_history'], 
+            x=range(len(row['val_history'])), 
+            y=row['val_history'], 
             label=row['name'], 
             marker='o', 
             color=colors[idx], 
-            linewidth=2, 
+            linewidth=2.2, 
             ax=ax1
         )
     ax1.set_title('Validation Loss History')
@@ -62,69 +88,29 @@ def plot_train_eval(data : pd.DataFrame):
     ax1.set_ylabel('Loss')
     ax1.legend()
 
-    # --- Plot 3: Final Test Loss (Static Bar Chart) ---
-    ax3 = axes[3]
+    # --- ROW 2, PLOT 2: Best Validation Loss (Static Bar Chart) ---
     sns.barplot(
-        x='name', 
-        y='final_test_loss', 
-        data=df_sorted, 
-        palette=palette, 
-        hue='name',
-        legend=False,
-        edgecolor='black', 
-        alpha=0.85, 
-        ax=ax3
-    )
-    ax3.set_title('Final Test Loss')
-    ax3.set_xlabel(None)  # Remove redundant 'name' label on x-axis
-    ax3.set_ylabel('Loss')
-    
-    # Set tick positions explicitly to prevent warnings
-    ax3.set_xticks(range(len(df_sorted)))
-    ax3.set_xticklabels(df_sorted['name'], rotation=45, ha='right')
-
-    ax3.set_ylim(0, 1)
-
-    # Add exact value labels on top of each bar
-    for bar in ax3.patches:
-        yval = bar.get_height()
-        ax3.text(bar.get_x() + bar.get_width()/2.0, yval + 0.01, f"{yval:.4f}", ha='center', va='bottom', fontsize=9)
-
-
-    # --- Plot 4: Best Validation Loss
-    ax2 = axes[2]
-    sns.barplot(
-        x = 'name',
-        y = 'best_val_loss',
-        data = df_sorted,
-        palette = palette,
-        hue = 'name',
-        legend = False,
-        edgecolor = 'black',
-        alpha = 0.85,
-        ax = ax2
+        x='name',
+        y='best_val_loss',
+        data=df_sorted,
+        palette=palette,
+        edgecolor='black',
+        alpha=0.85,
+        ax=ax2
     )
     ax2.set_title('Best Validation Loss')
-    ax2.set_xlabel(None),
+    ax2.set_xlabel(None)
     ax2.set_ylabel('Loss')
-
-    ax2.set_xticks(range(len(df_sorted)))
     ax2.set_xticklabels(df_sorted['name'], rotation=45, ha='right')
-
     ax2.set_ylim(0, 1)
 
-    # Add values on top of bar
-    for bar in ax2.patches:
-        yval = bar.get_height()
-        ax2.text(bar.get_x() + bar.get_width()/2.0, yval + 0.01, f"{yval:.4f}", ha='center', va='bottom', fontsize=9)
-
-
+    # Native, safe method to pull text values directly from the plotted container
+    for container in ax2.containers:
+        ax2.bar_label(container, fmt='%.4f', padding=3, fontsize=14)
 
     # Optimize layout to ensure labels do not overlap or get truncated
     plt.tight_layout()
-
-    # Save figure
-    plt.savefig(OUT_PATH, dpi=300)
+    plt.savefig(OUT_PATH, dpi = 300)
 
 if __name__ == '__main__':
 
@@ -132,19 +118,38 @@ if __name__ == '__main__':
     path_to_pq = Path('exports', 'model_evaluation', 'benchmarks.parquet')
     data = pd.read_parquet(path=path_to_pq)
 
+    data = data[['name', 'train_history', 'val_history', 'test_loss', 'best_val_loss']]
 
-    data = data[['name', 'train_loss_history', 'val_loss_history', 'final_test_loss', 'best_val_loss']]
+    # Define explicit name mappings
+    name_mapping = {
+        'SampleExt1': 'Sample_extent_1',
+        'SampleExt3': 'Sample_extent_3',
+        'SampleExt5': 'Sample_extent_5',
+        'SampleExt7': 'Sample_extent_7',
+        'Lead-5': 'lead_time_-5',
+        'Lead0': 'lead_time_0',
+        'Lead5': 'lead_time_5',
+        'Lead10': 'lead_time_10',
+        'Lead20': 'lead_time_20'
+    }
 
+    # 1. Process Sequence Models
+    seq_models_old = ['SampleExt1', 'SampleExt3', 'SampleExt5', 'SampleExt7']
+    seq_models_new = [name_mapping[m] for m in seq_models_old]
+    
+    seq_data = data[data['name'].isin(seq_models_old)].copy()
+    seq_data['name'] = seq_data['name'].map(name_mapping)
+    seq_data['name'] = pd.Categorical(seq_data['name'], categories=seq_models_new, ordered=True)
+    seq_data = seq_data.sort_values('name')
 
+    # 2. Process Lead Models
+    lead_models_old = ['Lead-5', 'Lead0', 'Lead5', 'Lead10', 'Lead20']
+    lead_models_new = [name_mapping[m] for m in lead_models_old]
+    
+    lead_data = data[data['name'].isin(lead_models_old)].copy()
+    lead_data['name'] = lead_data['name'].map(name_mapping)
+    lead_data['name'] = pd.Categorical(lead_data['name'], categories=lead_models_new, ordered=True)
+    lead_data = lead_data.sort_values('name')
 
-    seq_models = ['SampleExt1', 'SampleExt3', 'SampleExt5', 'SampleExt7']
-    seq_data = data[data['name'].isin(seq_models)]
-    seq_data['name'] = pd.Categorical(seq_data['name'], categories = seq_models, ordered = True)
-
-
-    lead_models = ['Lead-5', 'Lead0', 'Lead5', 'Lead10', 'Lead20']
-    lead_data = data[data['name'].isin(lead_models)]
-    lead_data['name'] = pd.Categorical(lead_data['name'], categories = lead_models, ordered = True)
-
-
-    plot_train_eval(lead_data)
+    # Plot whichever dataset you currently need (e.g., lead_data)
+    plot_train_eval(seq_data)

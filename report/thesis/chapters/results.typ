@@ -45,37 +45,11 @@ A more detailed view into the results of the prediction pipeline is showcased in
 
 
 == Experiment 2: Sample Extent
-The first sub-investigation as defined by *RQ 2* in @fig:research_questions. Conceptually, this investigation attempts to discover the amount of context necessary for a valuable prediction to be made, by varying the extent of the input sample. The setup of the spatio-transformer allows for dynamic scaling of input features. The temporal scope of dynamic features, or simply the amount of images ingested per data module is variable. However, the early fusion concept chosen here demands every input token to be treated equally. This has the effect that the number of images in the input sample linearly scales the amount of tokens, which in turn scale the computational time quadratically. The maximum sample length feasible on hardware available is seven days, above which could not be investigated. In this experiment a lead-time of zero days was chosen. Four otherwise equally defined models were trained with varying sample extents, the experiment descriptions of which are shown in @tab:samp_configurations.
-
-
-
-#figure(
-  table(
-    columns : 2,
-
-    stroke: (x, y) => if y == 0 {
-    (bottom: 0.7pt + black)
-    },
-
-    align: (x, y) => (
-      if x > 0 { center }
-      else { left }
-    ),
-
-    table.header(
-      [ *Experiment Name* ], [ *Sample Extent* ],
-    ),
-    [SampleExt1], [1],
-    [SampleExt3], [3],
-    [SampleExt5], [5],
-    [SampleExt7], [7],
-  ),
-  caption : [Sample extent experiment configurations]
-) <tab:samp_configurations>
+The first sub-investigation as defined by *RQ 2* in @fig:research_questions. Conceptually, this investigation attempts to discover the amount of context necessary for a valuable prediction to be made, by varying the extent of the input sample. The setup of the spatio-transformer allows for dynamic scaling of input features. The temporal scope of dynamic features, or simply the amount of images ingested per data module is variable. However, the early fusion concept chosen here demands every input token to be treated equally. This has the effect that the number of images in the input sample linearly scales the amount of tokens, which in turn scale the computational time quadratically. The maximum sample length feasible on hardware available is seven days, above which could not be investigated. In this experiment a lead-time of zero days was chosen. Four otherwise equally defined models were trained with varying sample extents.
 
 
 #figure(
-  image("../figs/model_seq_compare.png", width : 100%),
+  image("../figs/model_sample_compare.png", width : 100%),
   caption : [Training performance of models with varying sample length]
 ) <fig:samp_train_results>
 
@@ -83,11 +57,11 @@ The first sub-investigation as defined by *RQ 2* in @fig:research_questions. Con
 
 All examples experience volatility in validation loss starting at epochs 20-30, while the training loss decreases steadily. This is a clear giveaway for overfitting, where the models are learning to memorize data rather than wildfire relationships.
 
-Perhaps most critically, all runs show gaps between validation and testing scores. This can point to the general disparity of validation and testing sets, however by comparing these differences amongst the models brings some insight into their capabilities. #emph[SampleExt1] shows the biggest gap. More specifically, while obtaining the lowest best validation, it has the worst testing score. Being able to obtain non-complex seems to be feasible in the short-term but fails when data is completely unknown. As wildfires are highly dynamic and instationary phenomena, this shows that such a short sample time frame is insufficient.
+Perhaps most critically, all runs show gaps between validation and testing scores. This can point to the general disparity of validation and testing sets, however by comparing these differences amongst the models brings some insight into their capabilities. #emph[Sample_Extent1] shows the biggest gap. More specifically, while obtaining the lowest best validation, it has the worst testing score. Being able to obtain non-complex seems to be feasible in the short-term but fails when data is completely unknown. As wildfires are highly dynamic and instationary phenomena, this shows that such a short sample time frame is insufficient.
 
-On the other end of the spectrum, #emph[SampleExt7] uses the most contextual information to make predictions. While comparably having a higher average validation loss, it has the smallest disparity to its training loss, making it the best generalizer among the four. Richer, more contextualized information seems to have positive impact on both the prediction accuracy as well as the deployability of the model to previously unseen data. #emph[SampleExt3] shows quite similar conditions.
+On the other end of the spectrum, #emph[Sample_Extent7] uses the most contextual information to make predictions. While comparably having a higher average validation loss, it has the smallest disparity to its training loss, making it the best generalizer among the four. Richer, more contextualized information seems to have positive impact on both the prediction accuracy as well as the deployability of the model to previously unseen data. #emph[Sample_Extent3] shows quite similar conditions.
 
-#emph[SampleExt5] acts as middle ground to the aforementioned models. Both sit in the middle for validation scores but fail to capture the enhanced generalization of the seven days of context.
+#emph[Sample_Extent5] acts as middle ground to the aforementioned models. Both sit in the middle for validation scores but fail to capture the enhanced generalization of the seven days of context.
 
 
 #figure(
@@ -97,9 +71,9 @@ On the other end of the spectrum, #emph[SampleExt7] uses the most contextual inf
 
 To further demonstrate the models abilities and illustrate their differences, @fig:samp_lift illustrates cumulative gains of lift-charts of the models. Essentially, the methdology here argues that for such a rare event like wildfires, most of the risk should be contained in a fraction of the total area. The set of predictions, presented on the x-axis, has here been ordered in descending order of predicted risk. A model that would simply guess randomly would show a uniform distribution of risk over all pixels, as denoted by the random spatial baseline. A well-trained model on the other hand should be able to contain large amounts of the actual fires in very few image pixels.
 
-All four models show this behaviour, proving they operate without having to guess randomly. The clear categorical winner from this perspective is again #emph[SampleExt3], with the highest overall Gini-coefficient of $0.620$. It is able to contain roughly $70%$ of actual fires within $20%$ of the total area. 
+All four models show this behaviour, proving they operate without having to guess randomly. The clear categorical winner from this perspective is again #emph[Sample_Extent3], with the highest overall Gini-coefficient of $0.620$. It is able to contain roughly $70%$ of actual fires within $20%$ of the total area. 
 
-As previously #emph[SampleExt5] underperforms compared to all other models, being able to centralize significantly less burn pixels its riskiest $20%$ of its area, aligning with the previous loss analysis. 
+As previously #emph[Sample_Extent5] underperforms compared to all other models, being able to centralize significantly less burn pixels its riskiest $20%$ of its area, aligning with the previous loss analysis. 
 
 
 
@@ -110,7 +84,7 @@ The results of this experiment shows, that context has immense influence on pred
 An important notion to consider here, which has one with a direct implication on the conceptualization of using spatio-temporal transformers for this prediction task. Results show clearly, that validation loss does not decrease with more context added. More importantly, a model with less sample extent outperformed those with more context. Despite having all the information a model with short samples have, the extended sample approach misses its advantage. The implication to the model at this point is, that it does not simply learn to rule out this noise introduced by additional information, but causes it to loose accuracy. Embedding temporal information seems pose additional challenges, which a simple Julian day embedding fails to mitigate.
 
 == Experiment 3: Lead-Time
-The second experiment relates to *RQ 3* of @fig:research_questions and investigates the extent to which varying the lead-time influences prediction abilities of the transformer. To reiterate, the lead-time describes the amount of time passed between the last seen training sample and the beginning of the target, the time frame of prediction as per @fig:temporal_scope. In this instance we test for five different lead times, as shown in @tab:lead_configurations. The correct interpretation of #emph[Lead-5] is that the sample and target extents overlap by five days. It therefore does not function as a predictor, but more as a wildfire tracker and has here been included to show the influence of a temporal overlap or a negative lead time.
+The second experiment relates to *RQ 3* of @fig:research_questions and investigates the extent to which varying the lead-time influences prediction abilities of the transformer. To reiterate, the lead-time describes the amount of time passed between the last seen training sample and the beginning of the target, the time frame of prediction as per @fig:temporal_scope. As a guide, the correct interpretation of the models, e.g. #emph[Lead_time-5], is that the sample and target extents overlap by five days. It therefore does not function as a predictor, but more as a wildfire tracker and has here been included to show the influence of a temporal overlap or a negative lead time.
 
 #figure(
   table(
@@ -142,27 +116,27 @@ The second experiment relates to *RQ 3* of @fig:research_questions and investiga
   caption : [Training performance of models with varying lead time]
 ) <fig:lead_train_results>
 
-The training performance of all models is useful once again to determine important trends and comparisons betweeen them. Notably and without surprise, the training losses of #emph[Lead-5] are lower and steeper as compared to its counterparts. Nonetheless, despite increasing the lead-times to values as large as 20, both training and validation scores seem to be converge, showing learned trends.
+The training performance of all models is useful once again to determine important trends and comparisons betweeen them. Notably and without surprise, the training losses of #emph[Lead_time-5] are lower and steeper as compared to its counterparts. Nonetheless, despite increasing the lead-times to values as large as 20, both training and validation scores seem to be converge, showing learned trends.
 
-Regardless, of the lead-time, all validation losses ecome unstable as late as epoch 30, showing first signs of overfitting. All models show some ability to learn fundamental relationships in the features. Even after the point of the best validation loss is reached even the longest lead time model #emph[Lead-20] shows the ability to overfit and predict targets that take place 20 days into the future. 
+Regardless, of the lead-time, all validation losses ecome unstable as late as epoch 30, showing first signs of overfitting. All models show some ability to learn fundamental relationships in the features. Even after the point of the best validation loss is reached even the longest lead time model #emph[Lead_time20] shows the ability to overfit and predict targets that take place 20 days into the future. 
 
-Most interesting in this case is the testing loss chart, which shows a staircase behaviour, when elongating the lead-time. This shows a very clear patter: the longer the lead-time, the more predictive accuracy degrades for unseen data. Despite its validation loss being exceptional ($0.3193$), #emph[Lead-20] far overfits the data as can be identified by its test loss value ($0.8852$). 
+Most interesting in this case is the testing loss chart, which shows a staircase behaviour, when elongating the lead-time. This shows a very clear patter: the longer the lead-time, the more predictive accuracy degrades for unseen data. Despite its validation loss being exceptional ($0.3193$), #emph[Lead_time20] far overfits the data as can be identified by its test loss value ($0.8852$). 
 
 #figure(
   image("../figs/lift_lead.png"),
   caption : [Lift curves and Gini-coefficients of comparable models]
 ) <fig:lead_lift>
 
-The lift curve shows similar trends. With a Gini-coefficient of $0.635$ sets the baseline for all future predicting models. Unsurprisingly both #emph[Lead20] (Gini: $0.452$) and #emph[Lead10] (Gini: $0.440$) perform the worst. Surprisingly however, #emph[Lead5] (Gini : $0.512$) shows little to none prediction degradation compared to #emph[Lead0] (Gini : $0.508$), the baseline model, despite its extended target frame of reference. Predictions show to retain their predictive validity for up to a five-day period, however not for far greater lead-times.
+The lift curve shows similar trends. With a Gini-coefficient of $0.635$ sets the baseline for all future predicting models. Unsurprisingly both #emph[Lead_time20] (Gini: $0.452$) and #emph[Lead_time10] (Gini: $0.440$) perform the worst. Surprisingly however, #emph[Lead_time5] (Gini : $0.512$) shows little to none prediction degradation compared to #emph[Lead_time0] (Gini : $0.508$), the baseline model, despite its extended target frame of reference. Predictions show to retain their predictive validity for up to a five-day period, however not for far greater lead-times.
 
-Combining insights from both analyses shows, that a five-day lead-time is highly performant under predictive circumstances. Both a stable Gini-coefficient of the lift curve and relatively good validation to testing loss ratio can be seen for this model making it a viable option for fire management purposes. Furthermore, #emph[Lead-5] underlines the validity of the architecutre, by showing that it can spatially segment features. Long lead-times here stress test the network showing that inherent noise and missing data are issues that are especially extended into the future prediction domain. Nonetheless, the ability of the transformer to retain predictive performance without losing copious amounts of generalizability demonstrates that an applicable predictive lead-time is possible in this transformer architecture. 
+Combining insights from both analyses shows, that a five-day lead-time is highly performant under predictive circumstances. Both a stable Gini-coefficient of the lift curve and relatively good validation to testing loss ratio can be seen for this model making it a viable option for fire management purposes. Furthermore, #emph[Lead_time-5] underlines the validity of the architecutre, by showing that it can spatially segment features. Long lead-times here stress test the network showing that inherent noise and missing data are issues that are especially extended into the future prediction domain. Nonetheless, the ability of the transformer to retain predictive performance without losing copious amounts of generalizability demonstrates that an applicable predictive lead-time is possible in this transformer architecture. 
 
 As shown by @fig:lead_train_results, a progressively larger loss can be identified for increasing lead-times. While having proven to be suitable for predictions of risk up to five years ahead of present time, the drastically increasing loss shows clear limits of the model. At least the here applied formulation of the prediction pipeline is not sufficient to continue producing accurate predictions into the future. Besides the fact that for this case, the amount of context which could be used as input was limited for computational reasons, there are certain applications which require an accurate estimation of aggregated risk for much larger lead-times and predictive time frames. The insurance sector as an apt example, relies on evaluating wildfire risk for property insurance contracts up to a year in advance. Since existing non transformer-based methods in the sector are profitable, both the computational limits and the insufficiently well interpreted data context cannot compete with such existing statistical methods.
 
 == Experiment 4: Ablation Studies
 Frequently, due to the complex nature of transformer architectures, not enough reasoning about the inner workings and performance is done (@fig:research_questions, *RQ4*). Hence, we here devote a section to ablation studies, more specifically to test the performance of the model under constrained circumstances. 
 
-To offer a structural window into the behaviour of the model we here take a trained model and predict one year of data with one or multiple input features removed. For each, we track both the mean absolute error (MAE) and the mean squared error (MSE), the ladder penalizing especially large errors. All comparisons are made to the pre-trained baseline model #emph[SampleExt3] with a lead-time of zero , sequence extent of three and a target prediction of 14 days. Computationally, this is achieved by intervening in the forward pass of the prediction. By setting input data of single or combinations of models to zero, all attention blocks which rely on this information will yield zero as well. In essence, this constraint allows the model to behave as if certain information (e.g. terrain) is not available.
+To offer a structural window into the behaviour of the model we here take a trained model and predict one year of data with one or multiple input features removed. For each, we track both the mean absolute error (MAE) and the mean squared error (MSE), the ladder penalizing especially large errors. All comparisons are made to the pre-trained baseline model #emph[Sample_Extent3] with a lead-time of zero , sequence extent of three and a target prediction of 14 days. Computationally, this is achieved by intervening in the forward pass of the prediction. By setting input data of single or combinations of models to zero, all attention blocks which rely on this information will yield zero as well. In essence, this constraint allows the model to behave as if certain information (e.g. terrain) is not available.
 
 Other ablation approaches include retraining the model entirely under these constrained circumstances, however it is highly probable that the models will find new shortcuts to circumvent their limitations. This method would furthermore focus on investigating the datas redundancy rather than evaluating the focus of the architecture, the ladder being the goal of this investigation. By removing single data modules we investigate the models dependencies and structural vulnerabilities.
 
