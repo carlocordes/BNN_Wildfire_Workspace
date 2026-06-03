@@ -169,3 +169,15 @@ As a guide, the objectives defined above have here been defined as guiding resea
 
 ) <fig:research_questions>
 
+
+Furthermore, the results of the here demonstrated research was motivated by and will in its results answer the hypothesis which guided this work:
+
+#block(
+  fill: luma(245),
+  inset: 12pt,
+  radius: 4pt,
+  stroke: 0.5pt + luma(150),
+  width: 100%,
+)[
+  *Hypothesis:* Spatio-temporal transformers can effectively be applied to encode multi-modal satellite imagery as tokens, forming a predictive mechanism for wildfire risk. By treating time as an explicit variable through temporal embeddings along with spatial patch embeddings, applications for a wide array of temporal prediction scopes can be adapted. 
+]
