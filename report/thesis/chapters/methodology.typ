@@ -6,29 +6,14 @@ This section provides an overview of the methodological choices made in the inve
 
 
 == Workflow & System Overview <sec:method>
+To ensure consistency throughout the training, here a short explanation of the operating modules as referenced in @fig:system_arch. All information regarding harmonization and location of input data, temporal extents and specification on training parameters are stored in a configuration file. Upon retrieving data via download, an instance of the #emph[GoldenGrid] class is made, carrying all spatial and temporal parameters of the configuration to make sure data from different sources is projected alike. 
 
-#todo(stroke : red)[work in progress] 
 #figure(
-```yaml
-data:
-  spatial_extent:
-    longmin: -9.4900
-    longmax: -6.0234
-    latmin: 36.812
-    latmax: 42.2724
-  crs: "EPSG:3763"
-  scale: 1000 # meters
-  temporal_extent:
-    start_date: "2020-01-01"
-    end_date: "2024-12-31"
-    day_interval: 1
-    sequence_period : 4 # Time between respective sequences
-    sample_extent : 10 # Total time of sample
-    sample_period : 1 # Time between images in sample
-    target_extent : 4
-    lead_time : 0 # Time between last sample and target
-```
-)
+  image("../figs/system-overview.svg"),
+  caption : [Overview of System architecture]
+) <fig:system_arch>
+
+Upon training, the dataset builder is given all information regarding the configurations of data scopes as well as the splits of data into training, validation and test sets, the nature of which will be elaborated on in this section. The dataset builder is directly integrated into the training routine as the data is read directly from disk. The final products of the training routine are a model file which inherits the specifications of the model (.pt extension) as well as its trained weights along with a log file, containing time and performance records.g
 
 == Dataset Construction
 === Timeframe Configuration <subsec:time_config>
