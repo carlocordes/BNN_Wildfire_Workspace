@@ -27,7 +27,7 @@
 #counter(page).update(1)
 
 #include "front/abstract.typ"
-//#include "front/acknowledgement.typ"
+#include "front/acknowledgement.typ"
 
 #[
   #show outline.entry.where(
