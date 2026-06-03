@@ -8,7 +8,6 @@ To guide through the results of this investigation, the research questions formu
 
 As a proof of concept and a discussion of *RQ 1* in @fig:research_questions, here follows a description of the choices made to yield a working model that can confidently predict wildfire occurence probability.
 
-//TODO: Turning logits to probabilities
 
 
 // Difficulty with large penalization of loss function, lead to training instability.
@@ -41,7 +40,16 @@ A more detailed view into the results of the prediction pipeline is showcased in
 ) <fig:unified_comaparison>
 
 
+=== Return Period
+Given the abstraction of a deterministic ground truth into a probabalistic prediction, it becomes hard to obtain direct comparisons. Afterall, regardless of a fire happening at a certain position in space, model training does not largely penalize a prediction of risk, where no fire was seen. This being the basis of the infered wildfire risk, we lose the ability to draw sensible comparisons between prediction and ground truth, making especially a discussion of concrete error unfeasible. 
 
+To subsidize the discussion of model vality we here present a return period approach. Conceptually, it can be argued, that while in the daily prediction perspective, ground truths will not be perfect matches, this effect should ideally vanish when accumulating predictions over large periods of time. We here test the baseline model against 10 years of data and accumulate its predictions. By summing per-pixel probabilities, we first obtain an estimate of the expected number of fires over this period and from this derive the return period, or the expected amount of years between burns per pixel. Cells with a higher return period burn more rarely than those with a low return period. 
+#figure(
+  image("../figs/return_pd_compare.png", width : 100%),
+  caption : [Comparison of burn return period per pixel (truth vs. prediction)]
+) <fig:return_period>
+
+@fig:return_period shows the accumulated return period of the baseline model along with the same data as collected from ground truth data of 10 years. The caveat here is that the ground truth only contains 26 years of burn data making a comparison somewhat arbitrary. However, the model predictions are more dynamic. By summing regions with low aggregate risk we are even able to establish return periods upwards of 100 years, without ever having observed fires from the much shorter ground truth data. Analyzing entirely from a visual perspective, comparison of the two images shows that in the aggregate the model correctly captures the hotspots of fire activity. Especially in the north-western region hotspots appear similarly in both will also showng the high-risk region of the south-western peninsula of Sagres. While mostly without historical records, the central region is sparsely covered by risk, as correctly indicated by the ground truth. 
 
 
 == Experiment 2: Sample Extent
@@ -86,30 +94,6 @@ An important notion to consider here, which has one with a direct implication on
 == Experiment 3: Lead-Time
 The second experiment relates to *RQ 3* of @fig:research_questions and investigates the extent to which varying the lead-time influences prediction abilities of the transformer. To reiterate, the lead-time describes the amount of time passed between the last seen training sample and the beginning of the target, the time frame of prediction as per @fig:temporal_scope. As a guide, the correct interpretation of the models, e.g. #emph[Lead_time-5], is that the sample and target extents overlap by five days. It therefore does not function as a predictor, but more as a wildfire tracker and has here been included to show the influence of a temporal overlap or a negative lead time.
 
-#figure(
-  table(
-    columns : 2,
-
-    stroke: (x, y) => if y == 0 {
-    (bottom: 0.7pt + black)
-    },
-
-    align: (x, y) => (
-      if x > 0 { center }
-      else { left }
-    ),
-
-    table.header(
-      [ *Experiment Name* ], [ *Lead-Time* ]
-    ),
-    [Lead-5], [-5], 
-    [Lead0], [0],
-    [Lead5], [5], 
-    [Lead10], [10],
-    [Lead20], [20], 
-  ),
-  caption : [Lead-time experiment configurations]
-) <tab:lead_configurations>
 
 #figure(
   image("../figs/model_lead_compare.png", width : 100%),
