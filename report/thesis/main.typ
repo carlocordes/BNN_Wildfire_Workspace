@@ -101,9 +101,8 @@
 #let figure-numbering = super => numbering("A.1", counter(heading).get().first(), super)
 #show figure.where(kind: image): set figure(numbering: figure-numbering)
 
-//#include "appendices/useofai.typ"
-//#include "appendices/reproducibility.typ"
-//#include "appendices/someumldia.typ"
+#include "appendices/useofai.typ"
+#include "appendices/reproducibility.typ"
 #include "appendices/configs.typ"
 #include "appendices/gpu_specs.typ"
 
