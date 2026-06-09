@@ -25,14 +25,6 @@ This project leverages multi-modal satellite data within a spatio-temporal visio
 
 ---
 
-## Project Overview
-Provide a concise abstract of your thesis here. 
-* **The Problem:** Why is predicting wildfires difficult? Why are traditional methods lacking?
-* **The Solution:** How does the Transformer architecture solve this? (e.g., handling long-range spatial-temporal dependencies).
-* **Objective:** What did this thesis set out to achieve and what were the key findings?
-
----
-
 ## 📁 Repository Structure
 ```text
 Transformer_Wildfire_Workspace/
