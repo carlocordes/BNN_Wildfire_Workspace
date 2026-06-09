@@ -75,3 +75,6 @@ exports/detailed_results/unified_comparison.png
 exports/model_evaluation/figs/model_lead_compare.png
 exports/model_evaluation/figs/model_sample_compare.png
 exports/return_period/return_pd_compare.png
+exports/detailed_results/satellite/sentinel2_2025-08-16.tif.aux.xml
+exports/detailed_results/satellite/sentinel2_2025-09-02.tif.aux.xml
+report/thesis/CC_Geomatics_MSc.pdf

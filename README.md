@@ -1,47 +1,55 @@
-# Code Instructions
+# Spatio-Temporal Transformers for Wildfire Prediction
 
-After cloning, from the project root, set:
+This repository contains the complete codebase, documentation, and thesis report for my master's/bachelor's thesis titled **"patio-Temporal Transformers for Wildfire Prediction"** at **TU Delft**. 
 
-```
-export ROOT_DIR=$(pwd)
-```
-
-## Running using Docker
-
-Config files are shipeed in `files/configs/`. However, both datasets and experiments folders need to be added:
-
-````
-mkdir -p ./files/datasets
-mkdir -p ./files/experiments
-````
-
-For communication with Hetzner object storage and retrieval of datasets create  .env file & fill credentials:
-````
-touch .env
-----------
-ACCESS_KEY = '...'
-SECRET_KEY = '...'
-````
+This project leverages multi-modal satellite data within a spatio-temporal vision transformer architecture to infer a probabilistic risk of wildfire from historical burn records. The study investigates the effect of altering data contextualization and lead-time projection of predictions into the future.
 
 
-Build docker container from Dockerfile:
-````
-docker buildx build --platform linux/amd64 -t wildfire-model .
-````
+---
 
-## Manual Upload
+## 📌 Table of Contents
+- [Project Overview](#-project-overview)
+- [Repository Structure](#-repository-structure)
+- [Key Features](#-key-features)
+- [Dataset Information](#-dataset-information)
+- [Installation & Setup](#-installation--setup)
+- [Usage](#-usage)
+  - [1. Data Preprocessing](#1-data-preprocessing)
+  - [2. Model Training](#2-model-taining)
+  - [3. Evaluation](#3-evaluation)
+- [Thesis Report & Documentation](#-thesis-report--documentation)
+- [Results Summary](#-results-summary)
+- [License](#-license)
+- [Citation](#-citation)
+- [Contact](#-contact)
 
-Upload data (will upload entire results directory, name accordingly):
-````
-docker run -v "$(pwd)"/files:/app/files wildfire-model python scripts.s3_data_upload --path files/experiments --s3_prefix results
-````
+---
 
-# t009 and t010
+## Project Overview
+Provide a concise abstract of your thesis here. 
+* **The Problem:** Why is predicting wildfires difficult? Why are traditional methods lacking?
+* **The Solution:** How does the Transformer architecture solve this? (e.g., handling long-range spatial-temporal dependencies).
+* **Objective:** What did this thesis set out to achieve and what were the key findings?
 
-```
-docker run  --device nvidia.com/gpu=all --ipc=host -v "$(pwd)"/files:/app/files:Z wildfire-model python main.py --config config_t009_2.yaml --exp_name t009_2 --auto_upload; docker run  --device nvidia.com/gpu=all --ipc=host -v "$(pwd)"/files:/app/files:Z wildfire-model python main.py --config config_t009_3.yaml --exp_name t009_3 --auto_upload; docker run  --device nvidia.com/gpu=all --ipc=host -v "$(pwd)"/files:/app/files:Z wildfire-model python main.py --config config_t009_4.yaml --exp_name t009_4 --auto_upload; docker run  --device nvidia.com/gpu=all --ipc=host -v "$(pwd)"/files:/app/files:Z wildfire-model python main.py --config config_t010_1.yaml --exp_name t010_1 --auto_upload; docker run  --device nvidia.com/gpu=all --ipc=host -v "$(pwd)"/files:/app/files:Z wildfire-model python main.py --config config_t010_2.yaml --exp_name t010_2 --auto_upload; docker run  --device nvidia.com/gpu=all --ipc=host -v "$(pwd)"/files:/app/files:Z wildfire-model python main.py --config config_t010_3.yaml --exp_name t010_3 --auto_upload; docker run  --device nvidia.com/gpu=all --ipc=host -v "$(pwd)"/files:/app/files:Z wildfire-model python main.py --config config_t010_4.yaml --exp_name t010_4 --auto_upload;
+---
 
-
-```
-
-
+## 📁 Repository Structure
+```text
+├── docs/                     # Thesis report, presentations, and diagrams
+│   ├── thesis_final.pdf      # The complete written thesis report
+│   └── presentation.pdf      # Defense slides
+├── data/                     # Data directory (Note: heavy data should be gitignored)
+│   ├── raw/                  # Original datasets
+│   └── processed/            # Tokenized or preprocessed patches/tensors
+├── models/                   # Model definitions (Transformer variants)
+│   ├── layers.py
+│   └── transformer_fire.py
+├── notebooks/                # Jupyter notebooks for EDA and quick prototyping
+├── src/                      # Core source code modules
+│   ├── data_loader.py        # Custom dataset classes and batching
+│   ├── train.py              # Main training script
+│   ├── evaluate.py           # Evaluation metrics (F1, IoU, RMSE, etc.)
+│   └── utils.py              # Helper functions
+├── weights/                  # Saved model checkpoints (.pt, .pth, or .h5)
+├── requirements.txt          # Python dependencies
+└── README.md                 # Project navigation guide
