@@ -1,6 +1,6 @@
 # Spatio-Temporal Transformers for Wildfire Prediction
 
-This repository contains the complete codebase, documentation, and thesis report for my master's/bachelor's thesis titled **"patio-Temporal Transformers for Wildfire Prediction"** at **TU Delft**. 
+This repository contains the complete codebase, documentation, and thesis report for my master's/bachelor's thesis titled **"Spatio-Temporal Transformers for Wildfire Prediction"** at **TU Delft**. 
 
 This project leverages multi-modal satellite data within a spatio-temporal vision transformer architecture to infer a probabilistic risk of wildfire from historical burn records. The study investigates the effect of altering data contextualization and lead-time projection of predictions into the future.
 
