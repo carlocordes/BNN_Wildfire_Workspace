@@ -35,21 +35,37 @@ Provide a concise abstract of your thesis here.
 
 ## 📁 Repository Structure
 ```text
-├── docs/                     # Thesis report, presentations, and diagrams
-│   ├── thesis_final.pdf      # The complete written thesis report
-│   └── presentation.pdf      # Defense slides
-├── data/                     # Data directory (Note: heavy data should be gitignored)
-│   ├── raw/                  # Original datasets
-│   └── processed/            # Tokenized or preprocessed patches/tensors
-├── models/                   # Model definitions (Transformer variants)
-│   ├── layers.py
-│   └── transformer_fire.py
-├── notebooks/                # Jupyter notebooks for EDA and quick prototyping
-├── src/                      # Core source code modules
-│   ├── data_loader.py        # Custom dataset classes and batching
-│   ├── train.py              # Main training script
-│   ├── evaluate.py           # Evaluation metrics (F1, IoU, RMSE, etc.)
-│   └── utils.py              # Helper functions
-├── weights/                  # Saved model checkpoints (.pt, .pth, or .h5)
-├── requirements.txt          # Python dependencies
-└── README.md                 # Project navigation guide
+Transformer_Wildfire_Workspace/
+│
+├── files/
+│   └── configs/                  # Configuration files for training
+│
+├── report/                       # Thesis materials and academic documentation
+│   ├── thesis/                   # MSc thesis manuscript source
+│   ├── figures/                  # Images and diagrams used in the report
+│   └── references/               # Bibliography and supporting material
+│
+├── scripts/                      # Utility and automation scripts
+│   ├── preprocessing/            # Dataset preparation and cleaning
+│   ├── train.py                  # Training orchestration scripts
+│   └── evaluation/               # Validation and metrics pipelines
+│
+├── src/                          # Core Python source code
+│   ├── data/                     # Dataset loading and preprocessing logic
+│   ├── models/                   # Transformer architectures and model components
+│   ├── training/                 # Training loops, optimization, callbacks
+│   └── utils/                    # Shared helper utilities
+│
+├── main.py                       # Main project entry point
+├── Dockerfile                    # Containerized runtime environment
+├── pyproject.toml                # Python dependencies and project metadata
+├── .gitignore                    # Ignored files and directories
+├── .dockerignore                 # Docker build exclusions
+└── README.md                     # Project overview and usage instructions
+````
+
+
+## Installation & Setup
+
+
+## Usage
