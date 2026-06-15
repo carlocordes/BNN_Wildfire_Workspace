@@ -190,7 +190,7 @@ docker run  --device nvidia.com/gpu=all --ipc=host -v "$(pwd)"/files:/app/files:
 ## Contact
 
 
-## Contact
+## Citation
 ````
 @mastersthesis{cordes2026wildfire,
               author = {Carlo Cordes},
