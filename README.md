@@ -4,6 +4,7 @@ This repository contains the complete codebase, documentation, and thesis report
 
 This project leverages multi-modal satellite data within a spatio-temporal vision transformer architecture to infer a probabilistic risk of wildfire from historical burn records. The study investigates the effect of altering data contextualization and lead-time projection of predictions into the future.
 
+![Alt Text](exports/seasonal_prediction/season_pred_animation.gif)
 
 ---
 
