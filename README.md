@@ -8,7 +8,6 @@ This project leverages multi-modal satellite data within a spatio-temporal visio
 ---
 
 ## 📌 Table of Contents
-- [Project Overview](#-project-overview)
 - [Repository Structure](#-repository-structure)
 - [Key Features](#-key-features)
 - [Dataset Information](#-dataset-information)
@@ -29,35 +28,42 @@ This project leverages multi-modal satellite data within a spatio-temporal visio
 ```text
 Transformer_Wildfire_Workspace/
 │
-├── files/
-│   └── configs/                  # Configuration files for training
+├── files/                        # Data and Models
+│   ├── configs/                  # Configuration files for training
+│   ├── data/
+│   │   ├── raw/                  # Raw EE data container
+│   │   ├── processed/            # Harmonized in CRS, scale
+│   └── experiments/              # Model run output location
 │
-├── report/                       # Thesis materials and academic documentation
-│   ├── thesis/                   # MSc thesis manuscript source
-│   ├── figures/                  # Images and diagrams used in the report
-│   └── references/               # Bibliography and supporting material
-│
-├── scripts/                      # Utility and automation scripts
-│   ├── preprocessing/            # Dataset preparation and cleaning
+├── scripts/                      # Functional workflows
+│   ├── download_data.py          # EE endpoint retrievals
+│   ├── process_data.py           # Data harmonization
+│   ├── dataset_builder.py        # Constructs batched model inputs
 │   ├── train.py                  # Training orchestration scripts
-│   └── evaluation/               # Validation and metrics pipelines
 │
 ├── src/                          # Core Python source code
-│   ├── data/                     # Dataset loading and preprocessing logic
-│   ├── models/                   # Transformer architectures and model components
-│   ├── training/                 # Training loops, optimization, callbacks
-│   └── utils/                    # Shared helper utilities
+│   ├── core/
+│   ├── data/                     # Data download and processing logic
+│   └── models/                   # STViT Transformer architecture
 │
-├── main.py                       # Main project entry point
+├── exports/                      # Visuals
+├── report/                       # Thesis materials and documentation
+│   ├── thesis/                   # MSc thesis manuscript source
+│
 ├── Dockerfile                    # Containerized runtime environment
+├── .dockerignore                 # Docker build exclusions
 ├── pyproject.toml                # Python dependencies and project metadata
 ├── .gitignore                    # Ignored files and directories
-├── .dockerignore                 # Docker build exclusions
-└── README.md                     # Project overview and usage instructions
+├── README.md                     # Project overview and usage instructions
+└──  main.py                      # Main project entry point
+
 ````
 
 
 ## Installation & Setup
+- Clone
+- 
+
 
 
 ## Usage

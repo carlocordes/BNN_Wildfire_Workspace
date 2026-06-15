@@ -18,6 +18,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 from matplotlib.colorbar import ColorbarBase
 from matplotlib.colors import Normalize
+from matplotlib.animation import FuncAnimation
 
 # ----- CONFIG ----- #
 correction_logit = math.log(600)
@@ -194,6 +195,171 @@ def write_tifs(preds: np.ndarray, dates: list):
             
     print("All georeferenced TIFs saved successfully!")
     return None
+
+def produce_mp4(preds: np.ndarray, dates: list, fps: int = 12):
+    """
+    Generates a sequential MP4 animation of all predictions.
+    
+    Args:
+        preds: Numpy array of shape (num_frames, height, width)
+        dates: List of datetime objects corresponding to each frame
+        fps: Frames per second for the output video
+    """
+    num_frames = len(preds)
+    if num_frames == 0:
+        print("No predictions found to animate.")
+        return None
+
+    print(f"Initializing animation sequence for {num_frames} frames...")
+
+    # 1. Set up the figure layout
+    sns.set_theme(style="white")
+    fig, ax = plt.subplots(figsize=(8, 10))
+    
+    # Calculate global color boundaries for scale consistency
+    vmin, vmax = preds.min(), preds.max()
+
+    # 2. Initialize the first frame
+    # We turn off indexing ticks for a cleaner geospatial map look
+    im = ax.imshow(
+        preds[0], 
+        cmap='gnuplot2', 
+        vmin=vmin, 
+        vmax=vmax, 
+        animated=True
+    )
+    ax.set_xticks([])
+    ax.set_yticks([])
+    
+    # Static layout elements
+    fig.colorbar(im, ax=ax, orientation='horizontal', pad=0.05, label='Prediction Probability / Intensity')
+    title_text = ax.set_title(f"Date: {dates[0].strftime('%Y-%m-%d')}", fontsize=14, fontweight='bold')
+    plt.tight_layout()
+
+    # 3. Animation Update Function
+    def update(frame_idx):
+        # Update image array data directly (much faster than re-plotting)
+        im.set_array(preds[frame_idx])
+        
+        # Update the dynamic date title
+        date_str = dates[frame_idx].strftime('%Y-%m-%d')
+        title_text.set_text(f"Date: {date_str}")
+        
+        # Simple progress logger
+        if (frame_idx + 1) % max(1, num_frames // 10) == 0 or frame_idx == num_frames - 1:
+            print(f"Rendering frame {frame_idx + 1}/{num_frames}...")
+            
+        return [im, title_text]
+
+    # 4. Construct and Save the Animation
+    anim = FuncAnimation(
+        fig, 
+        update, 
+        frames=num_frames, 
+        interval=1000 // fps, 
+        blit=True
+    )
+
+    # Set up destination path
+    video_out_path = Path('exports', 'seasonal_prediction', 'season_pred_animation.mp4')
+    video_out_path.parent.mkdir(parents=True, exist_ok=True)
+
+    print(f"Writing video file to {video_out_path} using ffmpeg...")
+    try:
+        # 'ffmpeg' writer must be installed on your machine 
+        anim.save(
+            str(video_out_path), 
+            writer='ffmpeg', 
+            fps=fps, 
+            extra_args=['-vcodec', 'libx264', '-pix_fmt', 'yuv420p']
+        )
+        print("Animation successfully exported!")
+    except ValueError as e:
+        print(f"\nError: Writing MP4 requires 'ffmpeg'. Please verify it's installed on your system.\nDetails: {e}")
+    finally:
+        plt.close(fig) # Clear memory
+
+    return None
+
+def produce_gif(preds: np.ndarray, dates: list, fps: int = 12):
+    """
+    Generates a sequential, looping GIF animation of all predictions.
+    
+    Args:
+        preds: Numpy array of shape (num_frames, height, width)
+        dates: List of datetime objects corresponding to each frame
+        fps: Frames per second for the output GIF
+    """
+    num_frames = len(preds)
+    if num_frames == 0:
+        print("No predictions found to animate.")
+        return None
+
+    print(f"Initializing GIF animation sequence for {num_frames} frames...")
+
+    # 1. Set up the figure layout (identical setup for quality consistency)
+    sns.set_theme(style="white")
+    fig, ax = plt.subplots(figsize=(8, 10))
+    
+    vmin, vmax = preds.min(), preds.max()
+
+    # 2. Initialize the first frame
+    im = ax.imshow(
+        preds[0], 
+        cmap='gnuplot2', 
+        vmin=vmin, 
+        vmax=vmax, 
+        animated=True
+    )
+    ax.set_xticks([])
+    ax.set_yticks([])
+    
+    fig.colorbar(im, ax=ax, orientation='horizontal', pad=0.05, label='Prediction Probability / Intensity')
+    title_text = ax.set_title(f"Date: {dates[0].strftime('%Y-%m-%d')}", fontsize=14, fontweight='bold')
+    plt.tight_layout()
+
+    # 3. Animation Update Function
+    def update(frame_idx):
+        im.set_array(preds[frame_idx])
+        date_str = dates[frame_idx].strftime('%Y-%m-%d')
+        title_text.set_text(f"Date: {date_str}")
+        
+        if (frame_idx + 1) % max(1, num_frames // 10) == 0 or frame_idx == num_frames - 1:
+            print(f"Rendering frame {frame_idx + 1}/{num_frames}...")
+            
+        return [im, title_text]
+
+    # 4. Construct the Animation
+    anim = FuncAnimation(
+        fig, 
+        update, 
+        frames=num_frames, 
+        interval=1000 // fps, 
+        blit=True
+    )
+
+    # Set up destination path
+    gif_out_path = Path('exports', 'seasonal_prediction', 'season_pred_animation.gif')
+    gif_out_path.parent.mkdir(parents=True, exist_ok=True)
+
+    print(f"Writing GIF file to {gif_out_path} using pillow...")
+    try:
+        # Using 'pillow' writer which is standard in Python imaging environments
+        # 'dpi=150' or higher ensures text and lines stay razor-sharp
+        anim.save(
+            str(gif_out_path), 
+            writer='pillow', 
+            fps=fps,
+            dpi=150 
+        )
+        print("GIF successfully exported!")
+    except Exception as e:
+        print(f"\nError rendering GIF: {e}")
+    finally:
+        plt.close(fig)
+
+    return None
+
 if __name__ == '__main__':
     
     # Load cfg
@@ -220,7 +386,7 @@ if __name__ == '__main__':
     )
 
     # Data
-    dataset = SpatialTemporalDataset(cfg_path, split_type="test", benchmark_mode=True)
+    dataset = SpatialTemporalDataset(cfg_path, split_type="test", benchmark_mode=False)
     dataloader = DataLoader(
         dataset, batch_size=1, shuffle=False, num_workers=1,
         pin_memory=False, collate_fn=skip_missing_collate_fn
@@ -232,4 +398,6 @@ if __name__ == '__main__':
     #plot_seasonal_preds(preds, dates)
 
 
-    write_tifs(preds=preds, dates=dates)
+    #write_tifs(preds=preds, dates=dates)
+
+    produce_gif(preds = preds, dates = dates)
